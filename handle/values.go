@@ -1,30 +1,62 @@
 package handle
 
 import (
-	//"github.com/syndtr/goleveldb/leveldb/util"
+	"encoding/json"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/fiatjaf/summadb/context"
 )
 
 func Values(w http.ResponseWriter, r *http.Request) {
 	db := context.LoadDB(r)
+	defer context.StoreDB(r, db)
 
-	w.WriteHeader(http.StatusOK)
+	baseKey := r.URL.Path
 
 	if r.Method == "GET" || r.Method == "" {
-		//var dat map[string]string
-		//db.NewIterator(util.BytesPrefix([]byte(r.URL.Path)), nil)
-		data, err := db.Get([]byte(r.URL.Path), nil)
+		var data []byte
+		baseLength := len(baseKey)
+
+		tree := make(map[string]interface{})
+		iter := db.NewIterator(util.BytesPrefix([]byte(baseKey)), nil)
+		for iter.Next() {
+			key := string(iter.Key())[baseLength:]
+			val := string(iter.Value())
+
+			if key == "" {
+				tree["value"] = val
+			} else {
+				baseTree := tree // temporarily save reference to the base tree here
+				for _, subkey := range strings.Split(key[1:], "/") {
+					var subtree map[string]interface{}
+					var ok bool
+					if subtree, ok = tree[subkey].(map[string]interface{}); !ok {
+						subtree = make(map[string]interface{})
+						tree[subkey] = subtree
+					}
+					subtree["value"] = val
+					tree = subtree
+				}
+				tree = baseTree // get reference to base tree back before next iteration step
+			}
+		}
+		iter.Release()
+		err := iter.Error()
+
+		if err == nil {
+			data, err = json.Marshal(tree)
+		}
+
 		if err != nil {
-			log.Print("error on db.Get", err)
-			http.Error(w, "error on db.Get", 404)
+			log.Print("error on fetching", err)
+			http.Error(w, "error on fetching", 404)
 			return
 		}
-		log.Print("content for ", r.URL.Path, ": ", data)
 
 		w.Write(data)
 	} else if r.Method == "PUT" {
@@ -35,10 +67,10 @@ func Values(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		db.Put([]byte(r.URL.Path), body, nil)
+		db.Put([]byte(baseKey), body, nil)
+		w.WriteHeader(http.StatusOK)
 	} else if r.Method == "DELETE" {
-		db.Delete([]byte(r.URL.Path), nil)
+		db.Delete([]byte(baseKey), nil)
+		w.WriteHeader(http.StatusOK)
 	}
-
-	context.StoreDB(r, db)
 }
