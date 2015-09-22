@@ -1,12 +1,16 @@
 package handle
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/fiatjaf/summadb/context"
@@ -29,7 +33,7 @@ func Values(w http.ResponseWriter, r *http.Request) {
 			val := string(iter.Value())
 
 			if key == "" {
-				tree["value"] = val
+				tree["_val"] = val
 			} else {
 				baseTree := tree // temporarily save reference to the base tree here
 				for _, subkey := range strings.Split(key[1:], "/") {
@@ -39,7 +43,7 @@ func Values(w http.ResponseWriter, r *http.Request) {
 						subtree = make(map[string]interface{})
 						tree[subkey] = subtree
 					}
-					subtree["value"] = val
+					subtree["_val"] = val
 					tree = subtree
 				}
 				tree = baseTree // get reference to base tree back before next iteration step
@@ -67,10 +71,70 @@ func Values(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		db.Put([]byte(baseKey), body, nil)
+		bodyType := r.Header.Get("Content-Type")
+		if bodyType == "application/json" || bodyType == "text/json" {
+			// if it is JSON we must save it as its structure demands
+			var input map[string]interface{}
+			err := json.Unmarshal(body, &input)
+			if err != nil {
+				log.Print("Invalid JSON sent as JSON. ", err)
+				http.Error(w, "Invalid JSON sent as JSON.", 400)
+				return
+			}
+
+			saveObjectAt(db, baseKey, input)
+		} else {
+			// otherwise just save it as a bytes
+			db.Put([]byte(baseKey), body, nil)
+		}
+
 		w.WriteHeader(http.StatusOK)
 	} else if r.Method == "DELETE" {
 		db.Delete([]byte(baseKey), nil)
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func saveObjectAt(db *leveldb.DB, base string, o map[string]interface{}) {
+	for k, v := range o {
+		if v == nil || reflect.TypeOf(v).Kind() != reflect.Map {
+			k = string(k)
+			log.Print(k, " : ", v)
+			var path []byte
+			if k == "_val" {
+				path = []byte(base)
+			} else {
+				path = []byte(base + "/" + k)
+			}
+
+			if v == nil {
+				// setting a value to null should delete it
+				db.Delete(path, nil)
+			} else {
+				// we are accepting anything as a value, so we must do
+				// proper conversions.
+				var bs []byte
+				switch value := v.(type) {
+				case string:
+					bs = []byte(value)
+				case float64:
+					buf := new(bytes.Buffer)
+					err := binary.Write(buf, binary.LittleEndian, value)
+					if err != nil {
+						log.Print("error encoding float to bytes. ", err)
+					}
+					bs = buf.Bytes()
+				case []interface{}:
+					var err error
+					bs, err = json.Marshal(value)
+					if err != nil {
+						log.Print("error encoding array to json. ", err)
+					}
+				}
+				db.Put(path, bs, nil)
+			}
+		} else {
+			saveObjectAt(db, base+"/"+k, v.(map[string]interface{}))
+		}
 	}
 }
