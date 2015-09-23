@@ -2,52 +2,17 @@ package handle
 
 import (
 	"encoding/json"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"reflect"
-	"strings"
 
-	"github.com/fiatjaf/summadb/context"
+	"github.com/fiatjaf/summadb/database"
 )
 
 func Get(w http.ResponseWriter, r *http.Request) {
-	db := context.LoadDB(r)
-	defer context.StoreDB(r, db)
-
-	baseKey := r.URL.Path
-
 	var data []byte
-	baseLength := len(baseKey)
-
-	tree := make(map[string]interface{})
-	iter := db.NewIterator(util.BytesPrefix([]byte(baseKey)), nil)
-	for iter.Next() {
-		key := string(iter.Key())[baseLength:]
-		val := iter.Value()
-
-		if key == "" {
-			tree["_val"] = fromLevel(val)
-		} else {
-			baseTree := tree // temporarily save reference to the base tree here
-			for _, subkey := range strings.Split(key[1:], "/") {
-				var subtree map[string]interface{}
-				var ok bool
-				if subtree, ok = tree[subkey].(map[string]interface{}); !ok {
-					subtree = make(map[string]interface{})
-					tree[subkey] = subtree
-				}
-				subtree["_val"] = fromLevel(val)
-				tree = subtree
-			}
-			tree = baseTree // get reference to base tree back before next iteration step
-		}
-	}
-	iter.Release()
-	err := iter.Error()
+	tree, err := database.GetTreeAt(r.URL.Path)
 
 	if err == nil {
 		data, err = json.Marshal(tree)
@@ -63,11 +28,6 @@ func Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func Put(w http.ResponseWriter, r *http.Request) {
-	db := context.LoadDB(r)
-	defer context.StoreDB(r, db)
-
-	baseKey := r.URL.Path
-
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
 		log.Print("couldn't read request body:", err)
@@ -86,45 +46,16 @@ func Put(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		saveObjectAt(db, baseKey, input)
+		database.SaveTree(r.URL.Path, input)
 	} else {
 		// otherwise just save it as a string
-		db.Put([]byte(baseKey), toLevel(body), nil)
+		database.SaveValue(r.URL.Path, body)
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	db := context.LoadDB(r)
-	defer context.StoreDB(r, db)
-
-	baseKey := r.URL.Path
-
-	db.Delete([]byte(baseKey), nil)
+	database.Delete(r.URL.Path)
 	w.WriteHeader(http.StatusOK)
-}
-
-func saveObjectAt(db *leveldb.DB, base string, o map[string]interface{}) {
-	for k, v := range o {
-		if v == nil || reflect.TypeOf(v).Kind() != reflect.Map {
-			k = string(k)
-			var path []byte
-			if k == "_val" {
-				path = []byte(base)
-			} else {
-				path = []byte(base + "/" + k)
-			}
-
-			if v == nil {
-				// setting a value to null should delete it
-				db.Delete(path, nil)
-			} else {
-				bs := toLevel(v)
-				db.Put(path, bs, nil)
-			}
-		} else {
-			saveObjectAt(db, base+"/"+k, v.(map[string]interface{}))
-		}
-	}
 }
