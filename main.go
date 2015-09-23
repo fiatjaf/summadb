@@ -26,7 +26,9 @@ func main() {
 	middle.UseHandler(router)
 
 	// create, update, delete, view values
-	router.HandleFunc("/{path:.*}", handle.Values)
+	router.HandleFunc("/{path:.*}", handle.Get).Methods("GET")
+	router.HandleFunc("/{path:.*}", handle.Put).Methods("PUT")
+	router.HandleFunc("/{path:.*}", handle.Delete).Methods("DELETE")
 
 	log.Print("listening at port " + "5000")
 	http.ListenAndServe(":"+"5000", middle)
