@@ -6,10 +6,16 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"log"
+	"os"
 )
 
 func Sub(store string) sublevel {
-	db, err := leveldb.OpenFile("db.example", nil)
+	dbfile := os.Getenv("LEVELDB_PATH")
+	if dbfile == "" {
+		dbfile = "example.db"
+	}
+
+	db, err := leveldb.OpenFile(dbfile, nil)
 	if err != nil {
 		log.Print("couldn't open database file. ", err)
 	}
@@ -29,22 +35,22 @@ func (s sublevel) Close() error {
 }
 
 func (s sublevel) Delete(key []byte, wo *opt.WriteOptions) error {
-	key = append(s.namespace, key...)
+	key = append(append([]byte(nil), s.namespace...), key...)
 	return s.db.Delete(key, wo)
 }
 
 func (s sublevel) Get(key []byte, ro *opt.ReadOptions) (value []byte, err error) {
-	key = append(s.namespace, key...)
+	key = append(append([]byte(nil), s.namespace...), key...)
 	return s.db.Get(key, ro)
 }
 
 func (s sublevel) Put(key []byte, value []byte, wo *opt.WriteOptions) error {
-	key = append(s.namespace, key...)
+	key = append(append([]byte(nil), s.namespace...), key...)
 	return s.db.Put(key, value, wo)
 }
 
 func (s sublevel) Has(key []byte, ro *opt.ReadOptions) (ret bool, err error) {
-	key = append(s.namespace, key...)
+	key = append(append([]byte(nil), s.namespace...), key...)
 	return s.db.Has(key, ro)
 }
 
@@ -67,7 +73,8 @@ type subIterator struct {
 }
 
 func (si subIterator) Key() []byte {
-	return si.iterator.Key()
+	key := si.iterator.Key()
+	return key[len(si.namespace):]
 }
 func (si subIterator) Value() []byte {
 	return si.iterator.Value()
@@ -85,7 +92,7 @@ func (si subIterator) First() bool {
 	return si.iterator.First()
 }
 func (si subIterator) Seek(key []byte) bool {
-	key = append(si.namespace, key...)
+	key = append(append([]byte(nil), si.namespace...), key...)
 	return si.iterator.Seek(key)
 }
 func (si subIterator) Release() {
@@ -96,8 +103,36 @@ func (si subIterator) Error() error {
 }
 
 /* transactions */
-func (s sublevel) Write(b *leveldb.Batch, wo *opt.WriteOptions) (err error) {
-	return s.db.Write(b, wo)
+func (s sublevel) NewBatch() *Batch {
+	return &Batch{
+		namespace: s.namespace,
+		batch:     new(leveldb.Batch),
+	}
 }
 
-// TODO batch implementation
+type Batch struct {
+	namespace []byte
+	batch     *leveldb.Batch
+}
+
+func (b *Batch) Delete(key []byte) {
+	key = append(append([]byte(nil), b.namespace...), key...)
+	b.batch.Delete(key)
+}
+
+func (b *Batch) Put(key []byte, value []byte) {
+	key = append(append([]byte(nil), b.namespace...), key...)
+	b.batch.Put(key, value)
+}
+
+func (b *Batch) Len() int {
+	return b.batch.Len()
+}
+
+func (b *Batch) Reset() {
+	b.batch.Reset()
+}
+
+func (s sublevel) Write(b *Batch, wo *opt.WriteOptions) (err error) {
+	return s.db.Write(b.batch, wo)
+}

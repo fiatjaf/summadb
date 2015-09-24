@@ -12,15 +12,21 @@ import (
 
 func Get(w http.ResponseWriter, r *http.Request) {
 	var data []byte
-	tree, err := database.GetTreeAt(r.URL.Path)
+	var err error
 
-	if err == nil {
-		data, err = json.Marshal(tree)
+	qs := r.URL.Query()
+	if qs.Get("children") == "true" {
+		tree, err := database.GetTreeAt(r.URL.Path)
+		if err == nil {
+			data, err = json.Marshal(tree)
+		}
+	} else {
+		data, err = database.GetValueAt(r.URL.Path)
 	}
 
 	if err != nil {
 		log.Print("error on fetching", err)
-		http.Error(w, "error on fetching", 404)
+		http.Error(w, "Value not here: "+r.URL.Path, 404)
 		return
 	}
 
@@ -46,16 +52,16 @@ func Put(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		database.SaveTree(r.URL.Path, input)
+		database.SaveTreeAt(r.URL.Path, input)
 	} else {
 		// otherwise just save it as a string
-		database.SaveValue(r.URL.Path, body)
+		database.SaveValueAt(r.URL.Path, body)
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
-	database.Delete(r.URL.Path)
+	database.DeleteAt(r.URL.Path)
 	w.WriteHeader(http.StatusOK)
 }

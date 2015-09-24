@@ -11,6 +11,12 @@ func FromLevel(bs []byte) interface{} {
 }
 
 func ToLevel(val interface{}) []byte {
-	bs, _ := json.Marshal(val)
+	var bs []byte
+	switch v := val.(type) {
+	case []byte:
+		bs, _ = json.Marshal(string(v))
+	default:
+		bs, _ = json.Marshal(v)
+	}
 	return bs
 }

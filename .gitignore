@@ -1,3 +1,4 @@
-db.example
+*.db
 *.swp
 *.swo
+.lev_history
