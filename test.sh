@@ -11,7 +11,7 @@ killall() {
     exit 0
 }
 
-export LEVELDB_PATH=test.db
+export LEVELDB_PATH=tmp.test.db
 
 . assert.sh;
 
@@ -24,14 +24,15 @@ crud () {
   assert "curl http://localhost:5000/frutas/banana/cor" '"amarela"';
   assert "curl http://localhost:5000/frutas/banana/cor/_rev | py -x 'x[0]'" "1";
   assert "curl 'http://localhost:5000/frutas/banana?children=true' | jq '.cor._val'" '"amarela"'
-  curl -X PUT http://localhost:5000/frutas/banana/cor -d 'azul';
+  curl -X PUT http://localhost:5000/frutas/banana/cor -d '{"_val": "azul"}' -H 'content-type: text/json';
   assert "curl http://localhost:5000/frutas/banana/cor" '"azul"';
   assert "curl http://localhost:5000/frutas/banana/cor/_rev | py -x 'x[0]'" "2";
   assert "curl 'http://localhost:5000/frutas/banana?children=true' | jq '.cor._val'" '"azul"'
+  curl -X PUT http://localhost:5000/frutas/banana -d '{"carboidratos": 23}' -H 'content-type: text/json';
 
   assert_end
 }
-        echo '  * check initial db again';
+        echo '  * testing basic crud and _rev operations:';
 crud;
 
 # -- os finalmentes.

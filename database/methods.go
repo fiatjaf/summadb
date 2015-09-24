@@ -3,6 +3,7 @@ package database
 import (
 	"bytes"
 	"errors"
+	"github.com/fiatjaf/sublevel"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"log"
 	"reflect"
@@ -15,7 +16,7 @@ const (
 )
 
 func GetValueAt(path string) ([]byte, error) {
-	db := Sub(DOC_STORE)
+	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
 	bs, err := db.Get([]byte(path), nil)
@@ -26,7 +27,7 @@ func GetValueAt(path string) ([]byte, error) {
 	return bs, nil
 }
 
-func getWithRev(db sublevel, path string) ([]byte, string, error) {
+func getWithRev(db *sublevel.Sublevel, path string) ([]byte, string, error) {
 	val, err := db.Get([]byte(path), nil)
 	if err != nil { /* key does not exist. we should be able to create it. */
 		val = []byte(nil)
@@ -48,7 +49,7 @@ func getWithRev(db sublevel, path string) ([]byte, string, error) {
 }
 
 func GetTreeAt(path string) (map[string]interface{}, error) {
-	db := Sub(DOC_STORE)
+	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
 	baseLength := len(path)
@@ -93,7 +94,7 @@ func GetTreeAt(path string) (map[string]interface{}, error) {
 }
 
 func SaveValueAt(path string, bs []byte) error {
-	db := Sub(DOC_STORE)
+	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
 	old, rev, err := getWithRev(db, path)
@@ -105,14 +106,14 @@ func SaveValueAt(path string, bs []byte) error {
 	return nil
 }
 
-func saveRaw(db sublevel, path string, old []byte, oldrev string, bs []byte) {
+func saveRaw(db *sublevel.Sublevel, path string, old []byte, oldrev string, bs []byte) {
 	// don't save if it is equal.
 	if bytes.Equal(old, bs) {
 		return
 	}
 
 	batch := db.NewBatch()
-	batch.Put([]byte(path), ToLevel(bs))
+	batch.Put([]byte(path), bs)
 	batch.Put([]byte(path+"/_rev"), []byte(NewRev(oldrev, bs)))
 	err := db.Write(batch, nil)
 	if err != nil {
@@ -123,7 +124,7 @@ func saveRaw(db sublevel, path string, old []byte, oldrev string, bs []byte) {
 }
 
 func DeleteAt(path string) error {
-	db := Sub(DOC_STORE)
+	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
 	old, rev, err := getWithRev(db, path)
@@ -135,7 +136,7 @@ func DeleteAt(path string) error {
 	return nil
 }
 
-func deleteRaw(db sublevel, path string, old []byte, oldrev string) {
+func deleteRaw(db *sublevel.Sublevel, path string, old []byte, oldrev string) {
 	batch := db.NewBatch()
 	batch.Delete([]byte(path))
 	batch.Put([]byte(path+"/_rev"), []byte(NewRev(oldrev, nil)))
@@ -149,15 +150,16 @@ func deleteRaw(db sublevel, path string, old []byte, oldrev string) {
 }
 
 func SaveTreeAt(path string, tree map[string]interface{}) {
-	db := Sub(DOC_STORE)
+	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
 	saveObjectAt(db, path, tree)
 }
 
-func saveObjectAt(db sublevel, base string, o map[string]interface{}) {
+func saveObjectAt(db *sublevel.Sublevel, base string, o map[string]interface{}) {
 	for k, v := range o {
-		if k[0] == 0x5f /* skip special values, those starting with "_" */ {
+		if k[0] == 0x5f && string(k) != "_val" {
+			/* skip special values, those starting with "_" */
 			continue
 		} else if v == nil || reflect.TypeOf(v).Kind() != reflect.Map {
 			k = string(k)
@@ -178,6 +180,7 @@ func saveObjectAt(db sublevel, base string, o map[string]interface{}) {
 				// setting a value to null should delete it
 				deleteRaw(db, path, old, rev)
 			} else {
+				// where we actually set each single value:
 				saveRaw(db, path, old, rev, ToLevel(v))
 			}
 		} else {

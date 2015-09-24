@@ -33,6 +33,13 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+/* Should accept PUT requests with raw string bodies:
+     - curl -X PUT http://db/path/to/key -d 'some value'
+   and complete JSON objects, when specified with the Content-Type header:
+     - curl -X PUT http://db/path -d '{"to": {"_val": "nothing here", "key": "some value"}}' -H 'content-type: application/json'
+
+   The "_val" key is optional when setting, but can be used to set values right to the key to which they refer. It is sometimes needed, like in this example, here "path/to" had some children values to be set, but also needed a value of its own.
+*/
 func Put(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 	if err != nil {
@@ -55,7 +62,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 		database.SaveTreeAt(r.URL.Path, input)
 	} else {
 		// otherwise just save it as a string
-		database.SaveValueAt(r.URL.Path, body)
+		database.SaveValueAt(r.URL.Path, database.ToLevel(body))
 	}
 
 	w.WriteHeader(http.StatusOK)
