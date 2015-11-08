@@ -25,8 +25,8 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Print("error on fetching", err)
-		http.Error(w, "Value not here: "+r.URL.Path, 404)
+		log.Print("Value not found: ", err)
+		http.Error(w, "Value not found: "+r.URL.Path, 404)
 		return
 	}
 

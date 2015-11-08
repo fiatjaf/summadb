@@ -8,7 +8,7 @@ import (
 func Open() sublevel.AbstractLevel {
 	dbfile := os.Getenv("LEVELDB_PATH")
 	if dbfile == "" {
-		dbfile = "example.db"
+		dbfile = "/tmp/summa.db"
 	}
 
 	return sublevel.OpenFile(dbfile, nil)

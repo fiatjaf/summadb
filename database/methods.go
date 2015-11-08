@@ -102,25 +102,28 @@ func SaveValueAt(path string, bs []byte) error {
 		return err
 	}
 
+	// don't save if it is equal.
+	if bytes.Equal(old, bs) {
+		return errors.New("The value hasn't changed, so we haven't saved it.")
+	}
+
 	saveRaw(db, path, old, rev, bs)
 	return nil
 }
 
 func saveRaw(db *sublevel.Sublevel, path string, old []byte, oldrev string, bs []byte) {
-	// don't save if it is equal.
-	if bytes.Equal(old, bs) {
-		return
-	}
-
 	batch := db.NewBatch()
 	batch.Put([]byte(path), bs)
-	batch.Put([]byte(path+"/_rev"), []byte(NewRev(oldrev, bs)))
+
+	bumpRevsInBatch(db, batch, path)
+
+	log.Print(string(batch.Dump()))
 	err := db.Write(batch, nil)
 	if err != nil {
 		log.Print("saveRaw failed: ", err)
 	}
 
-	// TODO notify all upper keys of this change
+	notifyKeyChanged(path)
 }
 
 func DeleteAt(path string) error {
@@ -139,14 +142,16 @@ func DeleteAt(path string) error {
 func deleteRaw(db *sublevel.Sublevel, path string, old []byte, oldrev string) {
 	batch := db.NewBatch()
 	batch.Delete([]byte(path))
-	batch.Put([]byte(path+"/_rev"), []byte(NewRev(oldrev, nil)))
 	batch.Put([]byte(path+"/_deleted"), []byte(nil))
+
+	bumpRevsInBatch(db, batch, path)
+
 	err := db.Write(batch, nil)
 	if err != nil {
 		log.Print("deleteRaw failed: ", err)
 	}
 
-	// TODO notify all upper keys of this change
+	notifyKeyChanged(path)
 }
 
 func SaveTreeAt(path string, tree map[string]interface{}) {

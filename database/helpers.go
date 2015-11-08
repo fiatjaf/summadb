@@ -1,9 +1,10 @@
 package database
 
 import (
-	"crypto/md5"
+	"crypto/rand"
 	"fmt"
-	"io"
+	"github.com/fiatjaf/sublevel"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -20,11 +21,26 @@ func RevIsOk(rev string) bool {
 	return true
 }
 
-func NewRev(oldrev string, value []byte) string {
+func NewRev(oldrev string) string {
 	n, _ := strconv.Atoi(strings.Split(oldrev, "-")[0])
 
-	h := md5.New()
-	io.WriteString(h, oldrev)
-	h.Write(value)
-	return fmt.Sprintf("%d-%x", (n + 1), h.Sum(nil))
+	random := make([]byte, 12)
+	_, err := rand.Read(random)
+	if err != nil {
+		log.Fatal("Couldn't read random bytes: ", err)
+	}
+	return fmt.Sprintf("%d-%x", (n + 1), random)
+}
+
+func bumpRevsInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, modifiedKey string) {
+	keyParts := strings.Split(modifiedKey, "/")
+	for i := range keyParts {
+		parentKey := strings.Join(keyParts[:i], "/")
+		oldrev, err := db.Get([]byte(parentKey), nil)
+		if err != nil {
+			oldrev = []byte("0-00000")
+		}
+
+		batch.Put([]byte(parentKey+"/_rev"), []byte(NewRev(string(oldrev))))
+	}
 }
