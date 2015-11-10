@@ -3,23 +3,12 @@ package database
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/fiatjaf/sublevel"
 	"log"
 	"strconv"
 	"strings"
-)
 
-func RevIsOk(rev string) bool {
-	split := strings.Split(rev, "-")
-	if len(split) != 2 || len(split[1]) <= 0 {
-		return false
-	}
-	_, err := strconv.Atoi(split[0])
-	if err != nil {
-		return false
-	}
-	return true
-}
+	"github.com/fiatjaf/sublevel"
+)
 
 func NewRev(oldrev string) string {
 	n, _ := strconv.Atoi(strings.Split(oldrev, "-")[0])
@@ -32,15 +21,18 @@ func NewRev(oldrev string) string {
 	return fmt.Sprintf("%d-%x", (n + 1), random)
 }
 
-func bumpRevsInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, modifiedKey string) {
-	keyParts := strings.Split(modifiedKey, "/")
-	for i := range keyParts {
-		parentKey := strings.Join(keyParts[:i], "/")
-		oldrev, err := db.Get([]byte(parentKey), nil)
-		if err != nil {
-			oldrev = []byte("0-00000")
-		}
-
-		batch.Put([]byte(parentKey+"/_rev"), []byte(NewRev(string(oldrev))))
+func GetRev(db *sublevel.Sublevel, path string) []byte {
+	oldrev, err := db.Get([]byte(path+"/_rev"), nil)
+	if err != nil {
+		oldrev = []byte("0-00000")
 	}
+	return oldrev
+}
+
+func splitKeys(path string) []string {
+	return strings.Split(path[1:], "/")
+}
+
+func joinKeys(keys []string) string {
+	return "/" + strings.Join(keys, "/")
 }
