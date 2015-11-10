@@ -1,0 +1,6 @@
+language: go
+go:
+  - 1.3
+  - tip
+
+script: $HOME/gopath/bin/ginkgo -r
