@@ -30,9 +30,9 @@ func prepare(p prepared, kind kind, path string, val []byte) {
 
 	/* add NOTHING ops for each parent key not already being modified
 	   this will ensure they will get their revs bumped later */
-	pathKeys := splitKeys(path)
+	pathKeys := SplitKeys(path)
 	for i := range pathKeys {
-		parentKey := joinKeys(pathKeys[:i])
+		parentKey := JoinKeys(pathKeys[:i])
 		if _, ok := p[parentKey]; !ok {
 			p[parentKey] = op{kind: NOTHING}
 		}
@@ -63,9 +63,9 @@ func commit(db *sublevel.Sublevel, prepared prepared) error {
 				   path so we can guarantee that intermediate keys with no value also have
 				   their revs bumped. we can trust this because these intermediate paths will
 				   always have a _rev (and sometimes a _deleted) */
-				pathKeys := splitKeys(subpath)
+				pathKeys := SplitKeys(subpath)
 				if strings.HasPrefix(pathKeys[len(pathKeys)-1], "_") {
-					toBump[joinKeys(pathKeys[:len(pathKeys)-1])] = true
+					toBump[JoinKeys(pathKeys[:len(pathKeys)-1])] = true
 				} else {
 					toBump[subpath] = true
 				}

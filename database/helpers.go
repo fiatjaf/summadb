@@ -29,10 +29,10 @@ func GetRev(db *sublevel.Sublevel, path string) []byte {
 	return oldrev
 }
 
-func splitKeys(path string) []string {
+func SplitKeys(path string) []string {
 	return strings.Split(path[1:], "/")
 }
 
-func joinKeys(keys []string) string {
+func JoinKeys(keys []string) string {
 	return "/" + strings.Join(keys, "/")
 }

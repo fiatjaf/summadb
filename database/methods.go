@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -48,7 +49,7 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 		if key == "" {
 			baseTree["_val"] = FromLevel(val)
 		} else {
-			pathKeys := splitKeys(key)
+			pathKeys := SplitKeys(key)
 
 			/* skip special values, those starting with "_" */
 			if strings.HasPrefix(pathKeys[len(pathKeys)-1], "_") {
@@ -112,31 +113,45 @@ func SaveTreeAt(path string, tree map[string]interface{}) error {
 
 func saveObjectAt(db *sublevel.Sublevel, prepared prepared, base string, o map[string]interface{}) error {
 	for k, v := range o {
-		if k[0] == 0x5f && string(k) != "_val" {
-			/* skip secial values, i. e., those starting with "_", except for "_val" */
+		if k == "_val" {
+			/* actually set */
+			prepare(prepared, SAVE, base, ToLevel(v))
 			continue
-		} else if v == nil || reflect.TypeOf(v).Kind() != reflect.Map {
-			k = string(k)
-			var path string
-			if k == "_val" {
-				path = base
-			} else {
-				path = base + "/" + k
-			}
+		}
+		if k[0] == 0x5f {
+			/* skip secial values, i. e., those starting with "_" */
+			continue
+		}
 
-			// setting single values
-			if v == nil {
-				// setting a value to null should delete it
-				prepare(prepared, DELETE, path, nil)
-			} else {
-				// where we actually set each single value:
-				prepare(prepared, SAVE, path, ToLevel(v))
+		rv := reflect.ValueOf(v)
+		if rv.Kind() == reflect.Slice {
+			/* setting array as a map of numbers to values */
+			sliceAsTree := make(map[string]interface{})
+			for i := 0; i < rv.Len(); i++ {
+				sliceAsTree[fmt.Sprintf("%d", i)] = rv.Index(i).Interface()
 			}
-		} else {
-			err := saveObjectAt(db, prepared, base+"/"+k, v.(map[string]interface{}))
+			// we proceed as if it were a map
+			err := saveObjectAt(db, prepared, base+"/"+k, sliceAsTree)
 			if err != nil {
 				return err
 			}
+			continue
+		}
+		if v == nil || rv.Kind() != reflect.Map {
+			if v == nil {
+				// setting a value to null should delete it
+				prepare(prepared, DELETE, base+"/"+k, nil)
+			} else {
+				/* actually set */
+				prepare(prepared, SAVE, base+"/"+k, ToLevel(v))
+			}
+			continue
+		}
+
+		/* it's a map, so proceed to do add more things deeply into the tree */
+		err := saveObjectAt(db, prepared, base+"/"+k, v.(map[string]interface{}))
+		if err != nil {
+			return err
 		}
 	}
 	return nil
