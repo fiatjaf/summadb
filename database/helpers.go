@@ -36,3 +36,10 @@ func SplitKeys(path string) []string {
 func JoinKeys(keys []string) string {
 	return "/" + strings.Join(keys, "/")
 }
+
+func NormalizePath(path string) string {
+	if path == "/" {
+		return ""
+	}
+	return path
+}

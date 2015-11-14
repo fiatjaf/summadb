@@ -81,41 +81,60 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	return baseTree, nil
 }
 
-func SaveValueAt(path string, bs []byte) error {
+func SaveValueAt(path string, bs []byte) (newrev string, err error) {
 	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
-	prepared := make(prepared)
-	prepare(prepared, SAVE, path, bs)
-	return commit(db, prepared)
+	normpath := NormalizePath(path)
+	txn := make(prepared)
+	txn.prepare(SAVE, normpath, bs)
+	txn, err = txn.commit(db)
+	if err != nil {
+		return "", err
+	}
+	return txn[path].rev, nil
 }
 
-func DeleteAt(path string) error {
+func DeleteAt(path string) (newrev string, err error) {
 	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
-	prepared := make(prepared)
-	prepare(prepared, DELETE, path, nil)
-	return commit(db, prepared)
+	normpath := NormalizePath(path)
+	txn := make(prepared)
+	txn = txn.prepare(DELETE, normpath, nil)
+	txn, err = txn.commit(db)
+	if err != nil {
+		return "", err
+	}
+	return txn[path].rev, nil
 }
 
-func SaveTreeAt(path string, tree map[string]interface{}) error {
+func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
 	db, err := Open().Sub(DOC_STORE)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer db.Close()
 
-	prepared := make(prepared)
-	saveObjectAt(db, prepared, path, tree)
-	return commit(db, prepared)
+	normpath := NormalizePath(path)
+	txn := make(prepared)
+	txn, err = saveObjectAt(db, txn, normpath, tree)
+	if err != nil {
+		return "", err
+	}
+	txn, err = txn.commit(db)
+	if err != nil {
+		return "", err
+	}
+	return txn[path].rev, nil
 }
 
-func saveObjectAt(db *sublevel.Sublevel, prepared prepared, base string, o map[string]interface{}) error {
+func saveObjectAt(db *sublevel.Sublevel, txn prepared, base string, o map[string]interface{}) (prepared, error) {
+	var err error
 	for k, v := range o {
 		if k == "_val" {
 			/* actually set */
-			prepare(prepared, SAVE, base, ToLevel(v))
+			txn = txn.prepare(SAVE, base, ToLevel(v))
 			continue
 		}
 		if k[0] == 0x5f {
@@ -131,28 +150,28 @@ func saveObjectAt(db *sublevel.Sublevel, prepared prepared, base string, o map[s
 				sliceAsTree[fmt.Sprintf("%d", i)] = rv.Index(i).Interface()
 			}
 			// we proceed as if it were a map
-			err := saveObjectAt(db, prepared, base+"/"+k, sliceAsTree)
+			txn, err = saveObjectAt(db, txn, base+"/"+k, sliceAsTree)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			continue
 		}
 		if v == nil || rv.Kind() != reflect.Map {
 			if v == nil {
 				// setting a value to null should delete it
-				prepare(prepared, DELETE, base+"/"+k, nil)
+				txn = txn.prepare(DELETE, base+"/"+k, nil)
 			} else {
 				/* actually set */
-				prepare(prepared, SAVE, base+"/"+k, ToLevel(v))
+				txn = txn.prepare(SAVE, base+"/"+k, ToLevel(v))
 			}
 			continue
 		}
 
 		/* it's a map, so proceed to do add more things deeply into the tree */
-		err := saveObjectAt(db, prepared, base+"/"+k, v.(map[string]interface{}))
+		txn, err = saveObjectAt(db, txn, base+"/"+k, v.(map[string]interface{}))
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return txn, nil
 }

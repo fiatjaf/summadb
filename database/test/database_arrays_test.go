@@ -9,13 +9,19 @@ import (
 
 var _ = Describe("basic operations", func() {
 	Context("array values", func() {
+		It("should erase the db", func() {
+			Expect(db.Erase()).To(Succeed())
+		})
+
 		It("should save a tree with a simple array", func() {
-			Expect(db.SaveTreeAt("", map[string]interface{}{
+			rev, err := db.SaveTreeAt("/", map[string]interface{}{
 				"numbers": []interface{}{"zero", "one", "two", "three"},
-			})).To(Succeed())
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(rev).To(HavePrefix("1-"))
 			Expect(db.GetValueAt("/numbers/0")).To(BeEquivalentTo(`"zero"`))
 			Expect(db.GetValueAt("/numbers/3")).To(BeEquivalentTo(`"three"`))
-			_, err := db.GetValueAt("/numbers")
+			_, err = db.GetValueAt("/numbers")
 			Expect(err).To(HaveOccurred())
 			Expect(db.GetTreeAt("/numbers")).To(Equal(map[string]interface{}{
 				"0": value("zero"),
@@ -26,7 +32,7 @@ var _ = Describe("basic operations", func() {
 		})
 
 		It("should save a tree with a complex array", func() {
-			Expect(db.SaveTreeAt("", map[string]interface{}{
+			rev, err := db.SaveTreeAt("/", map[string]interface{}{
 				"letters": []interface{}{
 					map[string]interface{}{
 						"name":       "á",
@@ -37,10 +43,12 @@ var _ = Describe("basic operations", func() {
 						"variations": []interface{}{"b", "B"},
 					},
 				},
-			})).To(Succeed())
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(rev).To(HavePrefix("2-"))
 			Expect(db.GetValueAt("/letters/0/name")).To(BeEquivalentTo(`"á"`))
 			Expect(db.GetValueAt("/letters/1/variations/1")).To(BeEquivalentTo(`"B"`))
-			_, err := db.GetValueAt("/letters/0/variations")
+			_, err = db.GetValueAt("/letters/0/variations")
 			Expect(err).To(HaveOccurred())
 			Expect(db.GetTreeAt("/letters")).To(Equal(map[string]interface{}{
 				"0": map[string]interface{}{

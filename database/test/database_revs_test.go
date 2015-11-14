@@ -9,9 +9,15 @@ import (
 
 var _ = Describe("_rev", func() {
 	Context("_rev generation and bumping for single operations", func() {
+		It("should erase the db", func() {
+			Expect(db.Erase()).To(Succeed())
+		})
+
 		It("should generate _rev for a single key", func() {
-			db.SaveValueAt("/name", []byte(`"database of vehicles"`))
-			Expect(db.GetValueAt("/name/_rev")).To(HavePrefix("1-"))
+			savedrev, _ := db.SaveValueAt("/name", []byte(`"database of vehicles"`))
+			gottenrev, _ := db.GetValueAt("/name/_rev")
+			Expect(savedrev).To(BeEquivalentTo(gottenrev))
+			Expect(gottenrev).To(HavePrefix("1-"))
 		})
 
 		It("should generate _rev for parent keys", func() {
@@ -130,7 +136,7 @@ var _ = Describe("_rev", func() {
 			Expect(db.GetValueAt("/vehicles/train/land/_rev")).To(HavePrefix("2-"))
 			Expect(db.GetValueAt("/vehicles/train/land/rail/_rev")).To(HavePrefix("2-"))
 
-			db.SaveTreeAt("", map[string]interface{}{
+			db.SaveTreeAt("/", map[string]interface{}{
 				"vehicles": map[string]interface{}{
 					"skate": map[string]interface{}{
 						"air": map[string]interface{}{
@@ -146,7 +152,7 @@ var _ = Describe("_rev", func() {
 			Expect(db.GetValueAt("/vehicles/skate/air/_rev")).To(HavePrefix("1-"))
 			Expect(db.GetValueAt("/vehicles/skate/air/carried/_rev")).To(HavePrefix("1-"))
 
-			db.SaveTreeAt("", map[string]interface{}{
+			db.SaveTreeAt("/", map[string]interface{}{
 				"vehicles": map[string]interface{}{
 					"skate": map[string]interface{}{
 						"air": map[string]interface{}{

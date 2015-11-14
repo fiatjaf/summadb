@@ -16,14 +16,15 @@ const (
 	NOTHING kind = 0
 )
 
-type prepared map[string]op
+type prepared map[string]*op
 type op struct {
 	kind kind
 	val  []byte
+	rev  string
 }
 
-func prepare(p prepared, kind kind, path string, val []byte) {
-	p[path] = op{
+func (p prepared) prepare(kind kind, path string, val []byte) prepared {
+	p[path] = &op{
 		kind: kind,
 		val:  val,
 	}
@@ -34,20 +35,20 @@ func prepare(p prepared, kind kind, path string, val []byte) {
 	for i := range pathKeys {
 		parentKey := JoinKeys(pathKeys[:i])
 		if _, ok := p[parentKey]; !ok {
-			p[parentKey] = op{kind: NOTHING}
+			p[parentKey] = &op{kind: NOTHING}
 		}
 	}
+	return p
 }
 
-func commit(db *sublevel.Sublevel, prepared prepared) error {
+func (p prepared) commit(db *sublevel.Sublevel) (prepared, error) {
 	batch := db.NewBatch()
 
-	for path, op := range prepared {
-		val := op.val
+	for path, op := range p {
 		bytepath := []byte(path)
 		if op.kind == SAVE {
-			batch.Put(bytepath, val)
-			bumpRevForPathInBatch(db, batch, path)
+			batch.Put(bytepath, op.val)
+			op.rev = bumpRevForPathInBatch(db, batch, path)
 
 		} else if op.kind == DELETE {
 			/* iterate through all children (/something/here, /something/else/where etc.)
@@ -74,7 +75,7 @@ func commit(db *sublevel.Sublevel, prepared prepared) error {
 			err := iter.Error()
 			if err != nil {
 				log.Print("delete children iteration failed: ", err)
-				return err
+				return nil, err
 			}
 
 			for subpath := range toBump {
@@ -86,10 +87,10 @@ func commit(db *sublevel.Sublevel, prepared prepared) error {
 			// now we operate on the "base" key
 			batch.Delete(bytepath)
 			batch.Put([]byte(path+"/_deleted"), []byte(nil))
-			bumpRevForPathInBatch(db, batch, path)
+			op.rev = bumpRevForPathInBatch(db, batch, path)
 
 		} else if op.kind == NOTHING {
-			bumpRevForPathInBatch(db, batch, path)
+			op.rev = bumpRevForPathInBatch(db, batch, path)
 		}
 
 		/* there's no need to bump parent revs here, since all the parents were already
@@ -99,12 +100,14 @@ func commit(db *sublevel.Sublevel, prepared prepared) error {
 	err := db.Write(batch, nil)
 	if err != nil {
 		log.Print("commit failed: ", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return p, nil
 }
 
-func bumpRevForPathInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, path string) {
+func bumpRevForPathInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, path string) (newrev string) {
 	oldrev := GetRev(db, path)
-	batch.Put([]byte(path+"/_rev"), []byte(NewRev(string(oldrev))))
+	newrev = NewRev(string(oldrev))
+	batch.Put([]byte(path+"/_rev"), []byte(newrev))
+	return newrev
 }
