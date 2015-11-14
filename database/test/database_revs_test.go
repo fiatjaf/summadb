@@ -167,4 +167,12 @@ var _ = Describe("_rev", func() {
 			Expect(db.GetValueAt("/vehicles/skate/air/carried/_rev")).To(HavePrefix("2-"))
 		})
 	})
+
+	Context("GetSpecialKeysAt", func() {
+		It("should return rev", func() {
+			sk, err := db.GetSpecialKeysAt("/vehicles/skate")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sk.Rev).To(HavePrefix("2-"))
+		})
+	})
 })

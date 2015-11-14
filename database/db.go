@@ -6,7 +6,7 @@ import (
 	"github.com/fiatjaf/sublevel"
 )
 
-func getDBFile() string {
+func GetDBFile() string {
 	dbfile := os.Getenv("LEVELDB_PATH")
 	if dbfile == "" {
 		dbfile = "/tmp/summa.db"
@@ -15,11 +15,11 @@ func getDBFile() string {
 }
 
 func Open() sublevel.AbstractLevel {
-	dbfile := getDBFile()
+	dbfile := GetDBFile()
 	return sublevel.OpenFile(dbfile, nil)
 }
 
 func Erase() error {
-	dbfile := getDBFile()
+	dbfile := GetDBFile()
 	return os.RemoveAll(dbfile)
 }

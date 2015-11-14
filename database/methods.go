@@ -20,10 +20,36 @@ func GetValueAt(path string) ([]byte, error) {
 
 	bs, err := db.Get([]byte(path), nil)
 	if err != nil {
-		return []byte(nil), err
+		return nil, err
 	}
 
 	return bs, nil
+}
+
+func GetSpecialKeysAt(basepath string) (specialKeys struct {
+	Rev     string
+	Deleted bool
+}, err error) {
+	db := Open().MustSub(DOC_STORE)
+	defer db.Close()
+
+	basepath = basepath + "/_"
+	baseLength := len(basepath)
+	iter := db.NewIterator(util.BytesPrefix([]byte(basepath)), nil)
+	for iter.Next() {
+		key := string(iter.Key())[baseLength-1:]
+		if key == "_rev" {
+			specialKeys.Rev = string(iter.Value())
+		} else if key == "_deleted" {
+			specialKeys.Deleted = true
+		}
+	}
+	err = iter.Error()
+	if err != nil {
+		return specialKeys, err
+	}
+
+	return specialKeys, nil
 }
 
 func GetTreeAt(basepath string) (map[string]interface{}, error) {
