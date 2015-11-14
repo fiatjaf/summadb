@@ -2,5 +2,19 @@ language: go
 go:
   - 1.3
   - tip
-
-script: $HOME/gopath/bin/ginkgo -r
+install:
+  - go get 'github.com/carbocation/interpose'
+  - go get 'github.com/codegangsta/negroni'
+  - go get 'github.com/codegangsta/inject'
+  - go get 'github.com/fiatjaf/sublevel'
+  - go get 'github.com/go-martini/martini'
+  - go get 'github.com/golang/snappy'
+  - go get 'github.com/gorilla/context'
+  - go get 'github.com/gorilla/mux'
+  - go get 'github.com/onsi/ginkgo'
+  - go get 'github.com/onsi/gomega'
+  - go get 'github.com/rs/cors'
+  - go get 'github.com/syndtr/goleveldb/leveldb'
+  - go install 'github.com/onsi/ginkgo/ginkgo'
+  - export PATH=$PATH:$HOME/gopath/bin
+script: ginkgo -r
