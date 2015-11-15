@@ -32,7 +32,7 @@ func (p prepared) prepare(kind kind, path string, val []byte) prepared {
 	/* add NOTHING ops for each parent key not already being modified
 	   this will ensure they will get their revs bumped later */
 	pathKeys := SplitKeys(path)
-	for i := range pathKeys {
+	for i := 1; i < len(pathKeys); i++ {
 		parentKey := JoinKeys(pathKeys[:i])
 		if _, ok := p[parentKey]; !ok {
 			p[parentKey] = &op{kind: NOTHING}

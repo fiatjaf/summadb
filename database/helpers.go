@@ -30,16 +30,9 @@ func GetRev(db *sublevel.Sublevel, path string) []byte {
 }
 
 func SplitKeys(path string) []string {
-	return strings.Split(path[1:], "/")
+	return strings.Split(path, "/")
 }
 
 func JoinKeys(keys []string) string {
-	return "/" + strings.Join(keys, "/")
-}
-
-func NormalizePath(path string) string {
-	if path == "/" {
-		return ""
-	}
-	return path
+	return strings.Join(keys, "/")
 }

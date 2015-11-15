@@ -14,7 +14,7 @@ var _ = Describe("basic operations", func() {
 		})
 
 		It("should save a tree with a simple array", func() {
-			rev, err := db.SaveTreeAt("/", map[string]interface{}{
+			rev, err := db.SaveTreeAt("", map[string]interface{}{
 				"numbers": []interface{}{"zero", "one", "two", "three"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -32,7 +32,7 @@ var _ = Describe("basic operations", func() {
 		})
 
 		It("should save a tree with a complex array", func() {
-			rev, err := db.SaveTreeAt("/", map[string]interface{}{
+			rev, err := db.SaveTreeAt("", map[string]interface{}{
 				"letters": []interface{}{
 					map[string]interface{}{
 						"name":       "á",

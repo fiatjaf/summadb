@@ -136,7 +136,7 @@ var _ = Describe("_rev", func() {
 			Expect(db.GetValueAt("/vehicles/train/land/_rev")).To(HavePrefix("2-"))
 			Expect(db.GetValueAt("/vehicles/train/land/rail/_rev")).To(HavePrefix("2-"))
 
-			db.SaveTreeAt("/", map[string]interface{}{
+			db.SaveTreeAt("", map[string]interface{}{
 				"vehicles": map[string]interface{}{
 					"skate": map[string]interface{}{
 						"air": map[string]interface{}{
@@ -152,7 +152,7 @@ var _ = Describe("_rev", func() {
 			Expect(db.GetValueAt("/vehicles/skate/air/_rev")).To(HavePrefix("1-"))
 			Expect(db.GetValueAt("/vehicles/skate/air/carried/_rev")).To(HavePrefix("1-"))
 
-			db.SaveTreeAt("/", map[string]interface{}{
+			db.SaveTreeAt("", map[string]interface{}{
 				"vehicles": map[string]interface{}{
 					"skate": map[string]interface{}{
 						"air": map[string]interface{}{

@@ -67,9 +67,9 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	}
 
 	// iterate only through subkeys by adding a "/" to the prefix
-	iter := db.NewIterator(util.BytesPrefix(append(bytebasepath, 0x2f)), nil)
+	iter := db.NewIterator(util.BytesPrefix(append(bytebasepath, '/')), nil)
 	for iter.Next() {
-		key := string(iter.Key())[baseLength:]
+		key := string(iter.Key())[baseLength+1:]
 		val := iter.Value()
 
 		if key == "" {
@@ -87,10 +87,11 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 				var subtree map[string]interface{}
 				var ok bool
 				if subtree, ok = tree[subkey].(map[string]interface{}); !ok {
-					/* this subtree doesn't exist in our response object yet, create it */
+					/* this subtree doesn't exist in our response object yet,
+					   create it */
 					subtree = make(map[string]interface{})
-					tree[subkey] = subtree
 				}
+				tree[subkey] = subtree
 				tree = subtree // descend into that level
 			}
 			// no more levels to descend into, apply the value to our response object
@@ -111,9 +112,8 @@ func SaveValueAt(path string, bs []byte) (newrev string, err error) {
 	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
-	normpath := NormalizePath(path)
 	txn := make(prepared)
-	txn.prepare(SAVE, normpath, bs)
+	txn.prepare(SAVE, path, bs)
 	txn, err = txn.commit(db)
 	if err != nil {
 		return "", err
@@ -125,9 +125,8 @@ func DeleteAt(path string) (newrev string, err error) {
 	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
-	normpath := NormalizePath(path)
 	txn := make(prepared)
-	txn = txn.prepare(DELETE, normpath, nil)
+	txn = txn.prepare(DELETE, path, nil)
 	txn, err = txn.commit(db)
 	if err != nil {
 		return "", err
@@ -142,9 +141,8 @@ func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err er
 	}
 	defer db.Close()
 
-	normpath := NormalizePath(path)
 	txn := make(prepared)
-	txn, err = saveObjectAt(db, txn, normpath, tree)
+	txn, err = saveObjectAt(db, txn, path, tree)
 	if err != nil {
 		return "", err
 	}
@@ -152,18 +150,18 @@ func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err er
 	if err != nil {
 		return "", err
 	}
+
 	return txn[path].rev, nil
 }
 
 func saveObjectAt(db *sublevel.Sublevel, txn prepared, base string, o map[string]interface{}) (prepared, error) {
 	var err error
 	for k, v := range o {
-		if k == "_val" {
-			/* actually set */
-			txn = txn.prepare(SAVE, base, ToLevel(v))
-			continue
-		}
-		if k[0] == 0x5f {
+		if len(k) > 0 && k[0] == '_' {
+			if k == "_val" {
+				/* actually set the value at this path */
+				txn = txn.prepare(SAVE, base, ToLevel(v))
+			}
 			/* skip secial values, i. e., those starting with "_" */
 			continue
 		}
