@@ -2,8 +2,6 @@ package handle
 
 import (
 	"encoding/json"
-	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -74,27 +72,19 @@ func Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-	if err != nil {
-		log.Print("couldn't read request body: ", err)
-		http.Error(w, "couldn't read request body.", 400)
+	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
+		res := conflictError()
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
 		return
 	}
 
-	if ctx.isTree {
+	if ctx.jsonBody != nil {
 		// if it is JSON we must save it as its structure demands
-		var input map[string]interface{}
-		err = json.Unmarshal(body, &input)
-		if err != nil {
-			log.Print("Invalid JSON sent as JSON. ", err)
-			http.Error(w, "Invalid JSON sent as JSON.", 400)
-			return
-		}
-
-		rev, err = db.SaveTreeAt(r.URL.Path, input)
+		rev, err = db.SaveTreeAt(ctx.path, ctx.jsonBody)
 	} else {
 		// otherwise just save it as a string
-		rev, err = db.SaveValueAt(r.URL.Path, db.ToLevel(body))
+		rev, err = db.SaveValueAt(ctx.path, db.ToLevel(ctx.body))
 	}
 
 	if err != nil {
@@ -123,6 +113,13 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 	if ctx.lastKey[0] == '_' {
 		res := badRequest("you can't delete special keys")
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
+		res := conflictError()
 		w.WriteHeader(res.code)
 		json.NewEncoder(w).Encode(res)
 		return
