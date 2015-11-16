@@ -23,6 +23,7 @@ func BuildHTTPHandler() *interpose.Middleware {
 	// create, update, delete, view values
 	router.HandleFunc("/{path:.*}", Get).Methods("GET")
 	router.HandleFunc("/{path:.*}", Put).Methods("PUT")
+	router.HandleFunc("/{path:.*}", Patch).Methods("PATCH")
 	router.HandleFunc("/{path:.*}", Delete).Methods("DELETE")
 
 	return middle

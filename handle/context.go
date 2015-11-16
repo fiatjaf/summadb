@@ -103,7 +103,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 		var jsonBody map[string]interface{}
 		var body []byte
 
-		if r.Method == "PUT" || r.Method == "POST" {
+		if r.Method[0] == 'P' { // PUT, PATCH, POST
 			/* filter body size */
 			body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 			if err != nil {
@@ -115,9 +115,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 			}
 
 			isTree := false
-			bodyType := r.Header.Get("Content-Type")
-			if lastKey != "_val" &&
-				(bodyType == "application/json" || bodyType == "text/json") {
+			if lastKey != "_val" {
 				isTree = true
 			}
 

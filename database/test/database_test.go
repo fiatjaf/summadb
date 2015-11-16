@@ -12,6 +12,6 @@ func TestCRUD(t *testing.T) {
 	RunSpecs(t, "CRUD Suite")
 }
 
-func value(v string) map[string]interface{} {
+func value(v interface{}) map[string]interface{} {
 	return map[string]interface{}{"_val": v}
 }

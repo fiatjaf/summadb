@@ -56,6 +56,12 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	db := Open().MustSub(DOC_STORE)
 	defer db.Close()
 
+	// check if this tree is touched
+	_, err := db.Get([]byte(basepath+"/_rev"), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	baseLength := len(basepath)
 	bytebasepath := []byte(basepath)
 	baseTree := make(map[string]interface{})
@@ -131,6 +137,27 @@ func DeleteAt(path string) (newrev string, err error) {
 	if err != nil {
 		return "", err
 	}
+	return txn[path].rev, nil
+}
+
+func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
+	db, err := Open().Sub(DOC_STORE)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	txn := make(prepared)
+	txn = txn.reset(path)
+	txn, err = saveObjectAt(db, txn, path, tree)
+	if err != nil {
+		return "", err
+	}
+	txn, err = txn.commit(db)
+	if err != nil {
+		return "", err
+	}
+
 	return txn[path].rev, nil
 }
 

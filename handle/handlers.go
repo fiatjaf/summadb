@@ -53,12 +53,15 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
-/* Should accept PUT requests with raw string bodies:
-     - curl -X PUT http://db/path/to/key -d 'some value'
-   and complete JSON objects, when specified with the Content-Type header:
-     - curl -X PUT http://db/path -d '{"to": {"_val": "nothing here", "key": "some value"}}' -H 'content-type: application/json'
+/* requests with raw string bodies:
+   - curl -X PUT http://db/path/to/key/_val -d 'some value'
+ and complete JSON objects
+   - curl -X PUT http://db/path -d '{"to": {"_val": "nothing here", "key": "some value"}}' -H 'content-type: application/json'
 
-   The "_val" key is optional when setting, but can be used to set values right to the key to which they refer. It is sometimes needed, like in this example, here "path/to" had some children values to be set, but also needed a value of its own.
+While setting the raw string body of a path will only update that path and do not change others, a full JSON request will replace all keys under the specified path. PUT is idempotent.
+
+The "_val" key is optional when setting, but can be used to set values right to the key to which they refer. It is sometimes needed, like in this example, here "path/to" had some children values to be set, but also needed a value of its own.
+Other use of the "_val" key is to set a value to null strictly, because setting the nude key to null will delete it instead of setting it.
 */
 func Put(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
@@ -72,7 +75,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
+	if ctx.exists && ctx.actualRev != ctx.providedRev {
 		res := conflictError()
 		w.WriteHeader(res.code)
 		json.NewEncoder(w).Encode(res)
@@ -81,7 +84,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 
 	if ctx.jsonBody != nil {
 		// if it is JSON we must save it as its structure demands
-		rev, err = db.SaveTreeAt(ctx.path, ctx.jsonBody)
+		rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody)
 	} else {
 		// otherwise just save it as a string
 		rev, err = db.SaveValueAt(ctx.path, db.ToLevel(ctx.body))
@@ -96,6 +99,51 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(201)
+	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
+}
+
+/* Should accept PATCH requests with JSON objects:
+   - curl -X PATCH http://db/path -d '{"to": {"key": "some value"}}' -H 'content-type: application/json'
+There will not replace all values under /path, but only modify the values which the JSON object refers to.
+*/
+func Patch(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+	var err error
+	var rev string
+
+	if ctx.lastKey[0] == '_' {
+		res := badRequest("you can't update special keys")
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	if !ctx.exists {
+		res := notFound()
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	if ctx.actualRev != ctx.providedRev {
+		res := conflictError()
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	// update the tree as the JSON structure demands
+	rev, err = db.SaveTreeAt(ctx.path, ctx.jsonBody)
+
+	if err != nil {
+		log.Print("couldn't save value: ", err)
+		res := unknownError()
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
 }
 

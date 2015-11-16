@@ -5,7 +5,7 @@ func notFound() Error {
 }
 
 func conflictError() Error {
-	return Error{"conflict", "Document update conflict.", 409}
+	return Error{"conflict", "document update conflict", 409}
 }
 
 func badRequest(msgs ...string) Error {

@@ -114,5 +114,17 @@ var _ = Describe("basic operations", func() {
 			_, err = db.GetValueAt("/fruits/banana/hardness")
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("should error when fetching an untouched tree path", func() {
+			_, err := db.GetTreeAt("/nowhere")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should return when fetching a deleted tree path", func() {
+			tree, err := db.GetTreeAt("/fruits/banana")
+			Expect(err).ToNot(HaveOccurred())
+			empty := make(map[string]interface{})
+			Expect(tree).To(BeEquivalentTo(empty))
+		})
 	})
 })
