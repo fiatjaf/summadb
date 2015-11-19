@@ -6,6 +6,11 @@ import (
 	"github.com/fiatjaf/sublevel"
 )
 
+const (
+	DOC_STORE = "doc-store"
+	BY_SEQ    = "by-seq"
+)
+
 func GetDBFile() string {
 	dbfile := os.Getenv("LEVELDB_PATH")
 	if dbfile == "" {
@@ -14,9 +19,9 @@ func GetDBFile() string {
 	return dbfile
 }
 
-func Open() sublevel.AbstractLevel {
+func Open() *sublevel.AbstractLevel {
 	dbfile := GetDBFile()
-	return sublevel.OpenFile(dbfile, nil)
+	return sublevel.MustOpen(dbfile, nil)
 }
 
 func Erase() error {

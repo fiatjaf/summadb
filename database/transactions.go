@@ -63,33 +63,33 @@ func (p prepared) prepare(kind kind, path string, val []byte) prepared {
 	return p
 }
 
-func (p prepared) commit(db *sublevel.Sublevel) (prepared, error) {
+func (p prepared) commit(db *sublevel.AbstractLevel) (prepared, error) {
 	batch := db.NewBatch()
 
 	/* reseting */
 	if op, ok := p["RESET"]; ok {
 		deleteChildrenForPathInBatch(db, batch, op.path)
-		batch.Delete([]byte(op.path + "/_deleted"))
+		batch.Delete(DOC_STORE, []byte(op.path+"/_deleted"))
 		delete(p, "RESET")
 	}
 
 	for path, op := range p {
 		bytepath := []byte(path)
 		if op.kind == SAVE {
-			batch.Put(bytepath, op.val)
-			batch.Delete([]byte(path + "/_deleted"))
+			batch.Put(DOC_STORE, bytepath, op.val)
+			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
 			op.rev = bumpRevForPathInBatch(db, batch, path)
 
 		} else if op.kind == DELETE {
 			deleteChildrenForPathInBatch(db, batch, path)
 
 			// now we operate on the "base" key
-			batch.Delete(bytepath)
-			batch.Put([]byte(path+"/_deleted"), []byte(nil))
+			batch.Delete(DOC_STORE, bytepath)
+			batch.Put(DOC_STORE, []byte(path+"/_deleted"), []byte(nil))
 			op.rev = bumpRevForPathInBatch(db, batch, path)
 
 		} else if op.kind == UNDELETE {
-			batch.Delete([]byte(path + "/_deleted"))
+			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
 			op.rev = bumpRevForPathInBatch(db, batch, path)
 
 		} else if op.kind == NOTHING {
@@ -108,13 +108,14 @@ func (p prepared) commit(db *sublevel.Sublevel) (prepared, error) {
 	return p, nil
 }
 
-func deleteChildrenForPathInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, path string) error {
+func deleteChildrenForPathInBatch(db *sublevel.AbstractLevel, batch *sublevel.SuperBatch, path string) error {
 	/* iterate through all children (/something/here, /something/else/where etc.)
 	   do not iterate through this same "base" path.
 	   save the fetched paths in a bucket from which we will then bump their revs.
 	*/
 	toBump := make(map[string]bool)
-	iter := db.NewIterator(util.BytesPrefix([]byte(path+"/")), nil)
+	docs := db.Sub(DOC_STORE)
+	iter := docs.NewIterator(util.BytesPrefix([]byte(path+"/")), nil)
 	for iter.Next() {
 		subpath := string(iter.Key())
 
@@ -137,17 +138,23 @@ func deleteChildrenForPathInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatc
 	}
 
 	for subpath := range toBump {
-		batch.Delete([]byte(subpath))
-		batch.Put([]byte(subpath+"/_deleted"), []byte(nil))
+		batch.Delete(DOC_STORE, []byte(subpath))
+		batch.Put(DOC_STORE, []byte(subpath+"/_deleted"), []byte(nil))
 		bumpRevForPathInBatch(db, batch, subpath)
 	}
 
 	return nil
 }
 
-func bumpRevForPathInBatch(db *sublevel.Sublevel, batch *sublevel.SubBatch, path string) (newrev string) {
-	oldrev := GetRev(db, path)
+func bumpRevForPathInBatch(
+	db *sublevel.AbstractLevel,
+	batch *sublevel.SuperBatch,
+	path string,
+) (newrev string) {
+	docs := db.Sub(DOC_STORE)
+
+	oldrev := GetRev(docs, path)
 	newrev = NewRev(string(oldrev))
-	batch.Put([]byte(path+"/_rev"), []byte(newrev))
+	batch.Put(DOC_STORE, []byte(path+"/_rev"), []byte(newrev))
 	return newrev
 }

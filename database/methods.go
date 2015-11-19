@@ -9,16 +9,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-const (
-	DOC_STORE = "doc-store"
-	BY_SEQ    = "by-seq"
-)
-
 func GetValueAt(path string) ([]byte, error) {
-	db := Open().MustSub(DOC_STORE)
-	defer db.Close()
+	docs := Open().Sub(DOC_STORE)
+	defer docs.Close()
 
-	bs, err := db.Get([]byte(path), nil)
+	bs, err := docs.Get([]byte(path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -30,12 +25,12 @@ func GetSpecialKeysAt(basepath string) (specialKeys struct {
 	Rev     string
 	Deleted bool
 }, err error) {
-	db := Open().MustSub(DOC_STORE)
-	defer db.Close()
+	docs := Open().Sub(DOC_STORE)
+	defer docs.Close()
 
 	basepath = basepath + "/_"
 	baseLength := len(basepath)
-	iter := db.NewIterator(util.BytesPrefix([]byte(basepath)), nil)
+	iter := docs.NewIterator(util.BytesPrefix([]byte(basepath)), nil)
 	for iter.Next() {
 		key := string(iter.Key())[baseLength-1:]
 		if key == "_rev" {
@@ -53,11 +48,11 @@ func GetSpecialKeysAt(basepath string) (specialKeys struct {
 }
 
 func GetTreeAt(basepath string) (map[string]interface{}, error) {
-	db := Open().MustSub(DOC_STORE)
-	defer db.Close()
+	docs := Open().Sub(DOC_STORE)
+	defer docs.Close()
 
 	// check if this tree is touched
-	_, err := db.Get([]byte(basepath+"/_rev"), nil)
+	_, err := docs.Get([]byte(basepath+"/_rev"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +62,13 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	baseTree := make(map[string]interface{})
 
 	// fetch the "base" key if exists
-	val, err := db.Get(bytebasepath, nil)
+	val, err := docs.Get(bytebasepath, nil)
 	if err == nil {
 		baseTree["_val"] = FromLevel(val)
 	}
 
 	// iterate only through subkeys by adding a "/" to the prefix
-	iter := db.NewIterator(util.BytesPrefix(append(bytebasepath, '/')), nil)
+	iter := docs.NewIterator(util.BytesPrefix(append(bytebasepath, '/')), nil)
 	for iter.Next() {
 		key := string(iter.Key())[baseLength+1:]
 		val := iter.Value()
@@ -115,7 +110,7 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 }
 
 func SaveValueAt(path string, bs []byte) (newrev string, err error) {
-	db := Open().MustSub(DOC_STORE)
+	db := Open()
 	defer db.Close()
 
 	txn := make(prepared)
@@ -128,7 +123,7 @@ func SaveValueAt(path string, bs []byte) (newrev string, err error) {
 }
 
 func DeleteAt(path string) (newrev string, err error) {
-	db := Open().MustSub(DOC_STORE)
+	db := Open()
 	defer db.Close()
 
 	txn := make(prepared)
@@ -141,10 +136,7 @@ func DeleteAt(path string) (newrev string, err error) {
 }
 
 func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
-	db, err := Open().Sub(DOC_STORE)
-	if err != nil {
-		return "", err
-	}
+	db := Open()
 	defer db.Close()
 
 	txn := make(prepared)
@@ -162,10 +154,7 @@ func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err
 }
 
 func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
-	db, err := Open().Sub(DOC_STORE)
-	if err != nil {
-		return "", err
-	}
+	db := Open()
 	defer db.Close()
 
 	txn := make(prepared)
@@ -181,7 +170,7 @@ func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err er
 	return txn[path].rev, nil
 }
 
-func saveObjectAt(db *sublevel.Sublevel, txn prepared, base string, o map[string]interface{}) (prepared, error) {
+func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[string]interface{}) (prepared, error) {
 	var err error
 	for k, v := range o {
 		if len(k) > 0 && k[0] == '_' {
