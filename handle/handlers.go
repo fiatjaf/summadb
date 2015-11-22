@@ -202,9 +202,15 @@ func Changes(w http.ResponseWriter, r *http.Request) {
 	/* options */
 	// always true temporarily: all_docs := flag(r, "style", "all_docs")
 	sincep := param(r, "since")
-	since, err := strconv.Atoi(sincep)
-	if err != nil {
-		since = 0
+	var since uint64
+	if sincep == "now" {
+		since = db.GlobalUpdateSeq()
+	} else {
+		var err error
+		since, err = strconv.ParseUint(sincep, 10, 64)
+		if err != nil {
+			since = 0
+		}
 	}
 
 	path := db.CleanPath(r.URL.Path)

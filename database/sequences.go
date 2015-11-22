@@ -19,7 +19,7 @@ type justRev struct {
 	Rev string `json:"rev"`
 }
 
-func ListChangesAt(path string, since int) ([]Change, error) {
+func ListChangesAt(path string, since uint64) ([]Change, error) {
 	seqs := Open().Sub(BY_SEQ)
 	defer seqs.Close()
 
@@ -34,6 +34,10 @@ func ListChangesAt(path string, since int) ([]Change, error) {
 		valp := strings.Split(string(iter.Value()), "::")
 		subpath := valp[0]
 		rev := valp[1]
+
+		if seq <= since {
+			continue
+		}
 
 		res = append(res, Change{
 			Id:      subpath,

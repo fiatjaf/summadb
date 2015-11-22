@@ -2,6 +2,7 @@ package handle_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	db "github.com/fiatjaf/summadb/database"
@@ -13,6 +14,9 @@ import (
 
 var _ = Describe("changes feed", func() {
 	Context("changes HTTP", func() {
+		var intermediary uint64
+		var last uint64
+
 		It("should erase the db and prepopulate", func() {
 			Expect(db.Erase()).To(Succeed())
 			populateDB()
@@ -61,6 +65,20 @@ var _ = Describe("changes feed", func() {
 			Expect(res.Results).To(HaveLen(3))
 			Expect(res.Results[0].Changes[0].Rev).To(HavePrefix("1-"))
 			Expect(res.Results[2].Seq).To(Equal(res.LastSeq))
+
+			intermediary = res.Results[1].Seq
+			last = res.Results[2].Seq
+		})
+
+		It("should honour 'since'", func() {
+			r, _ = http.NewRequest("GET", fmt.Sprintf("/vehicles/boat/_changes?since=%d", intermediary), nil)
+			server.ServeHTTP(rec, r)
+
+			var res handle.ChangesResponse
+			json.Unmarshal(rec.Body.Bytes(), &res)
+			Expect(res.Results).To(HaveLen(1))
+			Expect(res.Results[0].Seq).To(Equal(last))
+			Expect(res.Results[0].Seq).To(Equal(res.LastSeq))
 		})
 	})
 })
