@@ -9,6 +9,8 @@ import (
 const (
 	DOC_STORE = "doc-store"
 	BY_SEQ    = "by-seq"
+
+	UPDATE_SEQ_KEY = "_update_seq_key"
 )
 
 func GetDBFile() string {

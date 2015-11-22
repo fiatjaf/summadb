@@ -1,7 +1,9 @@
 package database
 
 import (
+	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/fiatjaf/sublevel"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -66,9 +68,12 @@ func (p prepared) prepare(kind kind, path string, val []byte) prepared {
 func (p prepared) commit(db *sublevel.AbstractLevel) (prepared, error) {
 	batch := db.NewBatch()
 
+	/* lastseq */
+	updateSeq := getUpdateSeq(db)
+
 	/* reseting */
 	if op, ok := p["RESET"]; ok {
-		deleteChildrenForPathInBatch(db, batch, op.path)
+		deleteChildrenForPathInBatch(db, batch, op.path, &updateSeq)
 		batch.Delete(DOC_STORE, []byte(op.path+"/_deleted"))
 		delete(p, "RESET")
 	}
@@ -78,27 +83,34 @@ func (p prepared) commit(db *sublevel.AbstractLevel) (prepared, error) {
 		if op.kind == SAVE {
 			batch.Put(DOC_STORE, bytepath, op.val)
 			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
-			op.rev = bumpRevForPathInBatch(db, batch, path)
+			updateSeq++
+			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
 
 		} else if op.kind == DELETE {
-			deleteChildrenForPathInBatch(db, batch, path)
+			deleteChildrenForPathInBatch(db, batch, path, &updateSeq)
 
 			// now we operate on the "base" key
 			batch.Delete(DOC_STORE, bytepath)
 			batch.Put(DOC_STORE, []byte(path+"/_deleted"), []byte(nil))
-			op.rev = bumpRevForPathInBatch(db, batch, path)
+			updateSeq++
+			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
 
 		} else if op.kind == UNDELETE {
 			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
-			op.rev = bumpRevForPathInBatch(db, batch, path)
+			updateSeq++
+			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
 
 		} else if op.kind == NOTHING {
-			op.rev = bumpRevForPathInBatch(db, batch, path)
+			updateSeq++
+			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
 		}
 
 		/* there's no need to bump parent revs here, since all the parents were already
 		   added to the prepared map */
 	}
+
+	// bump global update seq
+	batch.Put(BY_SEQ, []byte(UPDATE_SEQ_KEY), []byte(strconv.Itoa(int(updateSeq))))
 
 	err := db.Write(batch, nil)
 	if err != nil {
@@ -108,7 +120,12 @@ func (p prepared) commit(db *sublevel.AbstractLevel) (prepared, error) {
 	return p, nil
 }
 
-func deleteChildrenForPathInBatch(db *sublevel.AbstractLevel, batch *sublevel.SuperBatch, path string) error {
+func deleteChildrenForPathInBatch(
+	db *sublevel.AbstractLevel,
+	batch *sublevel.SuperBatch,
+	path string,
+	updateSeq *uint64,
+) error {
 	/* iterate through all children (/something/here, /something/else/where etc.)
 	   do not iterate through this same "base" path.
 	   save the fetched paths in a bucket from which we will then bump their revs.
@@ -140,21 +157,27 @@ func deleteChildrenForPathInBatch(db *sublevel.AbstractLevel, batch *sublevel.Su
 	for subpath := range toBump {
 		batch.Delete(DOC_STORE, []byte(subpath))
 		batch.Put(DOC_STORE, []byte(subpath+"/_deleted"), []byte(nil))
-		bumpRevForPathInBatch(db, batch, subpath)
+		*updateSeq++
+		bumpPathInBatch(db, batch, subpath, *updateSeq)
 	}
 
 	return nil
 }
 
-func bumpRevForPathInBatch(
+func bumpPathInBatch(
 	db *sublevel.AbstractLevel,
 	batch *sublevel.SuperBatch,
 	path string,
+	newseq uint64,
 ) (newrev string) {
+	// bumping rev
 	docs := db.Sub(DOC_STORE)
-
 	oldrev := GetRev(docs, path)
 	newrev = NewRev(string(oldrev))
 	batch.Put(DOC_STORE, []byte(path+"/_rev"), []byte(newrev))
+
+	// bumping seq
+	batch.Put(BY_SEQ, []byte(fmt.Sprintf("%s:%016d", path, newseq)), []byte(newrev))
+
 	return newrev
 }
