@@ -177,7 +177,11 @@ func bumpPathInBatch(
 	batch.Put(DOC_STORE, []byte(path+"/_rev"), []byte(newrev))
 
 	// bumping seq
-	batch.Put(BY_SEQ, []byte(fmt.Sprintf("%s:%016d", path, newseq)), []byte(newrev))
+	pathkeys := SplitKeys(path)
+	nkeys := len(pathkeys)
+	basekey := JoinKeys(pathkeys[:nkeys-1])
+	lastkey := pathkeys[nkeys-1]
+	batch.Put(BY_SEQ, []byte(fmt.Sprintf("%s::%016d", basekey, newseq)), []byte(lastkey+"::"+newrev))
 
 	return newrev
 }

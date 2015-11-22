@@ -30,29 +30,29 @@ var _ = Describe("seq", func() {
 			db.SaveTreeAt("", map[string]interface{}{
 				"x": "oiwaeuriasburis",
 			})
-			Expect(db.UpdateSeq()).To(BeEquivalentTo(2))
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(2))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(0)))
-			Expect(db.LastSeqAt("/x")).To(BeNumerically(">", uint64(0)))
+			Expect(db.LastSeqAt("/x")).To(BeNumerically("==", uint64(0)))
 		})
 
 		It("should increase seqs when adding a new value", func() {
 			db.SaveValueAt("/z", []byte("ihfiuewrhewoiruh"))
-			Expect(db.UpdateSeq()).To(BeEquivalentTo(4))
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(4))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(2)))
-			Expect(db.LastSeqAt("/x")).To(BeNumerically("<", uint64(3)))
+			Expect(db.LastSeqAt("/x")).To(BeNumerically("==", uint64(0)))
 		})
 
 		It("should increase seqs when deleting a value", func() {
 			db.DeleteAt("/x")
-			Expect(db.UpdateSeq()).To(BeEquivalentTo(7))
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(7))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(5)))
-			Expect(db.LastSeqAt("/x")).To(BeNumerically(">", uint64(5)))
-			Expect(db.LastSeqAt("/z")).To(BeNumerically("<", uint64(5)))
+			Expect(db.LastSeqAt("/x")).To(BeNumerically("==", uint64(0)))
+			Expect(db.LastSeqAt("/z")).To(BeNumerically("==", uint64(0)))
 		})
 
 		It("should increase seqs when undeleting a value", func() {
 			db.SaveValueAt("/x/xchild", []byte("skjfbslkfbskdf"))
-			Expect(db.UpdateSeq()).To(BeEquivalentTo(10))
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(10))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(7)))
 			Expect(db.LastSeqAt("/x")).To(BeNumerically(">", uint64(7)))
 		})
@@ -67,7 +67,7 @@ var _ = Describe("seq", func() {
 				"ham":  "sadljkasndlksad",
 				"_val": "askjdasnkdjasd",
 			})
-			Expect(db.UpdateSeq()).To(BeEquivalentTo(22))
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(22))
 		})
 	})
 })
