@@ -9,19 +9,21 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-func ListChangesAt(path string) ([]struct {
-	subpath string
-	rev     string
-	seq     uint64
-}, error) {
+type Change struct {
+	Seq     uint64    `json:"seq"`
+	Id      string    `json:"id"`
+	Changes []justRev `json:"changes"`
+}
+
+type justRev struct {
+	Rev string `json:"rev"`
+}
+
+func ListChangesAt(path string, since int) ([]Change, error) {
 	seqs := Open().Sub(BY_SEQ)
 	defer seqs.Close()
 
-	res := make([]struct {
-		subpath string
-		rev     string
-		seq     uint64
-	}, 0)
+	res := make([]Change, 0)
 
 	basepath := path + "::"
 	baselength := len(basepath)
@@ -33,11 +35,11 @@ func ListChangesAt(path string) ([]struct {
 		subpath := valp[0]
 		rev := valp[1]
 
-		res = append(res, struct {
-			subpath string
-			rev     string
-			seq     uint64
-		}{subpath, rev, seq})
+		res = append(res, Change{
+			Id:      subpath,
+			Seq:     seq,
+			Changes: []justRev{justRev{rev}},
+		})
 	}
 	iter.Release()
 	err := iter.Error()

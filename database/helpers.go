@@ -13,7 +13,7 @@ import (
 func NewRev(oldrev string) string {
 	n, _ := strconv.Atoi(strings.Split(oldrev, "-")[0])
 
-	random := make([]byte, 12)
+	random := make([]byte, 5)
 	_, err := rand.Read(random)
 	if err != nil {
 		log.Fatal("Couldn't read random bytes: ", err)

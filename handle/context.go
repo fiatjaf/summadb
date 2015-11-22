@@ -18,17 +18,7 @@ func getContext(r *http.Request) common {
 	return context.Get(r, k).(common)
 }
 
-type options struct {
-	include_docs bool
-	descending   bool
-	startkey     bool
-	endkey       bool
-	revs         bool
-	open_revs    bool
-}
 type common struct {
-	opts options
-
 	body      []byte
 	jsonBody  map[string]interface{}
 	path      string
@@ -45,16 +35,6 @@ type common struct {
 
 func setCommonVariables(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		/* query parameters and options (with defaults) */
-		opts := options{
-			revs:         r.URL.Query().Get("revs") == "true",
-			include_docs: r.URL.Query().Get("include_docs") == "true",
-			descending:   r.URL.Query().Get("descending") == "true",
-			startkey:     r.URL.Query().Get("startkey") == "true",
-			endkey:       r.URL.Query().Get("endkey") == "true",
-			open_revs:    r.URL.Query().Get("openrevs") == "all",
-		}
-
 		/* when the path is in the format /nanana/nanana/_val
 		   we reply with the single value for that path, otherwise
 		   assume the whole tree is being requested. */
@@ -155,8 +135,6 @@ func setCommonVariables(next http.Handler) http.Handler {
 		}
 
 		context.Set(r, k, common{
-			opts: opts,
-
 			body:      body,
 			jsonBody:  jsonBody,
 			path:      path,

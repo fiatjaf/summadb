@@ -4,12 +4,27 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	db "github.com/fiatjaf/summadb/database"
 )
 
 func Get(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
+
+	/* here we handle special endpoints that, in CouchDB, refer to a database,
+	   but here are treated as documents (or better, subtrees) methods */
+	if ctx.lastKey == "_changes" {
+		Changes(w, r)
+		return
+	} else if ctx.lastKey == "_all_docs" {
+		return
+	} else if ctx.lastKey == "_revs_diff" {
+		return
+	} else if ctx.lastKey == "_missing_revs" {
+		return
+	}
+
 	var response []byte
 	var err error
 
@@ -34,11 +49,6 @@ func Get(w http.ResponseWriter, r *http.Request) {
 		} else {
 			response, err = db.GetValueAt(ctx.path)
 		}
-	}
-
-	/* special cases defined by query parameters */
-	if ctx.opts.revs {
-
 	}
 
 	if err != nil {
@@ -184,4 +194,39 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
+}
+
+func Changes(w http.ResponseWriter, r *http.Request) {
+	//ctx := getContext(r)
+
+	/* options */
+	// always true temporarily: all_docs := flag(r, "style", "all_docs")
+	sincep := param(r, "since")
+	since, err := strconv.Atoi(sincep)
+	if err != nil {
+		since = 0
+	}
+
+	path := db.CleanPath(r.URL.Path)
+	changes, err := db.ListChangesAt(path, since)
+	if err != nil {
+		log.Print("unknown error: ", err)
+		res := unknownError()
+		w.WriteHeader(res.code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	var lastSeq uint64 = 0
+	nchanges := len(changes)
+	if nchanges > 0 {
+		lastSeq = changes[nchanges-1].Seq
+	}
+
+	res := ChangesResponse{
+		LastSeq: lastSeq,
+		Results: changes,
+	}
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(res)
 }
