@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	db "github.com/fiatjaf/summadb/database"
-	handle "github.com/fiatjaf/summadb/handle"
+	"github.com/fiatjaf/summadb/handle/responses"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -36,7 +36,7 @@ var _ = Describe("server", func() {
 			r, _ = http.NewRequest("PUT", "/something/here", bytes.NewReader(jsonbody))
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(201))
-			var resp handle.Success
+			var resp responses.Success
 			Expect(json.Unmarshal(rec.Body.Bytes(), &resp)).To(Succeed())
 			Expect(resp.Ok).To(BeTrue())
 			Expect(resp.Id).To(Equal("here"))
@@ -87,7 +87,7 @@ var _ = Describe("server", func() {
 			r.Header.Set("If-Match", rev)
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(200))
-			var resp handle.Success
+			var resp responses.Success
 			Expect(json.Unmarshal(rec.Body.Bytes(), &resp)).To(Succeed())
 			Expect(resp.Ok).To(BeTrue())
 			Expect(resp.Id).To(Equal("many"))
@@ -173,7 +173,7 @@ var _ = Describe("server", func() {
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(201))
 
-			var resp handle.Success
+			var resp responses.Success
 			json.Unmarshal(rec.Body.Bytes(), &resp)
 			rev = resp.Rev
 		})
@@ -185,7 +185,7 @@ var _ = Describe("server", func() {
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(200))
 
-			var resp handle.Success
+			var resp responses.Success
 			json.Unmarshal(rec.Body.Bytes(), &resp)
 			rev = resp.Rev
 		})
@@ -198,25 +198,23 @@ var _ = Describe("server", func() {
 			Expect(rec.Code).To(Equal(200))
 		})
 
-		It("should get the rev of the root path", func() {
-			r, _ = http.NewRequest("GET", "/_rev", nil)
+		It("should get the rev of the something path", func() {
+			r, _ = http.NewRequest("GET", "/something/_rev", nil)
 			server.ServeHTTP(rec, r)
 			rev = rec.Body.String()
 		})
 
 		It("should have the correct tree in the end", func() {
-			r, _ = http.NewRequest("GET", "/", nil)
+			r, _ = http.NewRequest("GET", "/something", nil)
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(200))
 			Expect(rec.Body.String()).To(MatchJSON(`{
-              "_id": "",
+              "_id": "something",
               "_rev": "` + rev + `",
-              "something": {
-                "here": {
-                  "was": {
-                    "before": {
-                      "_val": "still another thing"
-                    }
+              "here": {
+                "was": {
+                  "before": {
+                    "_val": "still another thing"
                   }
                 }
               }

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	db "github.com/fiatjaf/summadb/database"
-	handle "github.com/fiatjaf/summadb/handle"
+	responses "github.com/fiatjaf/summadb/handle/responses"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,17 +22,11 @@ var _ = Describe("changes feed", func() {
 			populateDB()
 		})
 
-		It("should hit the changes endpoint", func() {
-			r, _ = http.NewRequest("GET", "/blabla/_changes", nil)
-			server.ServeHTTP(rec, r)
-			Expect(rec.Code).To(Equal(200))
-		})
-
 		It("should return a list of changes for a sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/_changes", nil)
 			server.ServeHTTP(rec, r)
 
-			var res handle.ChangesResponse
+			var res responses.Changes
 			json.Unmarshal(rec.Body.Bytes(), &res)
 			Expect(res.LastSeq).To(BeNumerically(">", 0))
 			Expect(res.LastSeq).To(BeNumerically("<=", 21))
@@ -45,7 +39,7 @@ var _ = Describe("changes feed", func() {
 			r, _ = http.NewRequest("GET", "/_changes", nil)
 			server.ServeHTTP(rec, r)
 
-			var res handle.ChangesResponse
+			var res responses.Changes
 			json.Unmarshal(rec.Body.Bytes(), &res)
 			Expect(res.LastSeq).To(BeNumerically(">", 0))
 			Expect(res.LastSeq).To(BeNumerically("<=", 21))
@@ -58,7 +52,7 @@ var _ = Describe("changes feed", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/boat/_changes", nil)
 			server.ServeHTTP(rec, r)
 
-			var res handle.ChangesResponse
+			var res responses.Changes
 			json.Unmarshal(rec.Body.Bytes(), &res)
 			Expect(res.LastSeq).To(BeNumerically(">", 0))
 			Expect(res.LastSeq).To(BeNumerically("<=", 21))
@@ -74,7 +68,7 @@ var _ = Describe("changes feed", func() {
 			r, _ = http.NewRequest("GET", fmt.Sprintf("/vehicles/boat/_changes?since=%d", intermediary), nil)
 			server.ServeHTTP(rec, r)
 
-			var res handle.ChangesResponse
+			var res responses.Changes
 			json.Unmarshal(rec.Body.Bytes(), &res)
 			Expect(res.Results).To(HaveLen(1))
 			Expect(res.Results[0].Seq).To(Equal(last))

@@ -43,11 +43,13 @@ func GetSpecialKeysAt(basepath string) (specialKeys struct {
 	if err != nil {
 		return specialKeys, err
 	}
-
 	return specialKeys, nil
 }
 
 func GetTreeAt(basepath string) (map[string]interface{}, error) {
+	/* TODO consider writing a variation of this that will fetch _revs and other special
+	   things. */
+
 	docs := Open().Sub(DOC_STORE)
 	defer docs.Close()
 

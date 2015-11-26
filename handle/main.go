@@ -13,7 +13,10 @@ func BuildHTTPHandler() *interpose.Middleware {
 	middle.Use(setCommonVariables)
 	middle.Use(adaptors.FromNegroni(cors.New(cors.Options{
 		// CORS
-		AllowedOrigins: []string{"*"},
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
+		AllowCredentials: true,
 	})))
 
 	// router

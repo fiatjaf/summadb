@@ -1,14 +1,14 @@
-package handle
+package responses
 
-func notFound() Error {
+func NotFound() Error {
 	return Error{"not_found", "missing", 404}
 }
 
-func conflictError() Error {
+func ConflictError() Error {
 	return Error{"conflict", "document update conflict", 409}
 }
 
-func badRequest(msgs ...string) Error {
+func BadRequest(msgs ...string) Error {
 	msg := "bad request"
 	if len(msgs) > 0 {
 		msg = msgs[0]
@@ -16,6 +16,6 @@ func badRequest(msgs ...string) Error {
 	return Error{"bad_request", msg, 400}
 }
 
-func unknownError() Error {
+func UnknownError() Error {
 	return Error{"unknown_error", "unknown", 500}
 }

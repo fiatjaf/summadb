@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
 
 	db "github.com/fiatjaf/summadb/database"
+	responses "github.com/fiatjaf/summadb/handle/responses"
 )
 
 func Get(w http.ResponseWriter, r *http.Request) {
@@ -14,10 +14,14 @@ func Get(w http.ResponseWriter, r *http.Request) {
 
 	/* here we handle special endpoints that, in CouchDB, refer to a database,
 	   but here are treated as documents (or better, subtrees) methods */
-	if ctx.lastKey == "_changes" {
+	if ctx.wantsDatabaseInfo {
+		DatabaseInfo(w, r)
+		return
+	} else if ctx.lastKey == "_changes" {
 		Changes(w, r)
 		return
 	} else if ctx.lastKey == "_all_docs" {
+		AllDocs(w, r)
 		return
 	} else if ctx.lastKey == "_revs_diff" {
 		return
@@ -29,8 +33,8 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if !ctx.exists {
-		res := notFound()
-		w.WriteHeader(res.code)
+		res := responses.NotFound()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
@@ -52,14 +56,15 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Print("unknown error: ", err)
-		res := unknownError()
-		w.WriteHeader(res.code)
+		log.Print("responses.Unknown error: ", err)
+		res := responses.UnknownError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	w.WriteHeader(200)
+	w.Header().Add("Content-Type", "application/json")
 	w.Write(response)
 }
 
@@ -79,15 +84,15 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	var rev string
 
 	if ctx.lastKey[0] == '_' {
-		res := badRequest("you can't update special keys")
-		w.WriteHeader(res.code)
+		res := responses.BadRequest("you can't update special keys")
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if ctx.exists && ctx.actualRev != ctx.providedRev {
-		res := conflictError()
-		w.WriteHeader(res.code)
+		res := responses.ConflictError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
@@ -102,14 +107,15 @@ func Put(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Print("couldn't save value: ", err)
-		res := unknownError()
-		w.WriteHeader(res.code)
+		res := responses.UnknownError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	w.WriteHeader(201)
-	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
 }
 
 /* Should accept PATCH requests with JSON objects:
@@ -122,22 +128,22 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 	var rev string
 
 	if ctx.lastKey[0] == '_' {
-		res := badRequest("you can't update special keys")
-		w.WriteHeader(res.code)
+		res := responses.BadRequest("you can't update special keys")
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if !ctx.exists {
-		res := notFound()
-		w.WriteHeader(res.code)
+		res := responses.NotFound()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if ctx.actualRev != ctx.providedRev {
-		res := conflictError()
-		w.WriteHeader(res.code)
+		res := responses.ConflictError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
@@ -147,14 +153,15 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Print("couldn't save value: ", err)
-		res := unknownError()
-		w.WriteHeader(res.code)
+		res := responses.UnknownError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
@@ -163,22 +170,22 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	var rev string
 
 	if !ctx.exists {
-		res := notFound()
-		w.WriteHeader(res.code)
+		res := responses.NotFound()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if ctx.lastKey[0] == '_' {
-		res := badRequest("you can't delete special keys")
-		w.WriteHeader(res.code)
+		res := responses.BadRequest("you can't delete special keys")
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
-		res := conflictError()
-		w.WriteHeader(res.code)
+		res := responses.ConflictError()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
@@ -186,53 +193,13 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	rev, err = db.DeleteAt(ctx.path)
 	if err != nil {
 		log.Print("couldn't delete key at ", ctx.path, ": ", err)
-		res := notFound()
-		w.WriteHeader(res.code)
+		res := responses.NotFound()
+		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(Success{ctx.lastKey, true, rev})
-}
-
-func Changes(w http.ResponseWriter, r *http.Request) {
-	//ctx := getContext(r)
-
-	/* options */
-	// always true temporarily: all_docs := flag(r, "style", "all_docs")
-	sincep := param(r, "since")
-	var since uint64
-	if sincep == "now" {
-		since = db.GlobalUpdateSeq()
-	} else {
-		var err error
-		since, err = strconv.ParseUint(sincep, 10, 64)
-		if err != nil {
-			since = 0
-		}
-	}
-
-	path := db.CleanPath(r.URL.Path)
-	changes, err := db.ListChangesAt(path, since)
-	if err != nil {
-		log.Print("unknown error: ", err)
-		res := unknownError()
-		w.WriteHeader(res.code)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
-
-	var lastSeq uint64 = 0
-	nchanges := len(changes)
-	if nchanges > 0 {
-		lastSeq = changes[nchanges-1].Seq
-	}
-
-	res := ChangesResponse{
-		LastSeq: lastSeq,
-		Results: changes,
-	}
-	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(res)
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
 }

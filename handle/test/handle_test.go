@@ -2,7 +2,6 @@ package handle_test
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -19,7 +18,6 @@ import (
 
 func TestHTTP(t *testing.T) {
 	RegisterFailHandler(Fail)
-	log.Print("using db at " + db.GetDBFile())
 	RunSpecs(t, "HTTP Suite")
 }
 

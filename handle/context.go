@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	db "github.com/fiatjaf/summadb/database"
+	"github.com/fiatjaf/summadb/handle/responses"
 
 	"github.com/gorilla/context"
 )
@@ -19,13 +20,14 @@ func getContext(r *http.Request) common {
 }
 
 type common struct {
-	body      []byte
-	jsonBody  map[string]interface{}
-	path      string
-	pathKeys  []string
-	nkeys     int
-	lastKey   string
-	wantsTree bool
+	body              []byte
+	jsonBody          map[string]interface{}
+	path              string
+	pathKeys          []string
+	nkeys             int
+	lastKey           string
+	wantsTree         bool
+	wantsDatabaseInfo bool
 
 	actualRev   string
 	deleted     bool
@@ -40,16 +42,28 @@ func setCommonVariables(next http.Handler) http.Handler {
 		   assume the whole tree is being requested. */
 		path := r.URL.Path
 		wantsTree := true
+		wantsDatabaseInfo := false
 		entityPath := path
 		pathKeys := db.SplitKeys(path)
 		nkeys := len(pathKeys)
-		var lastKey string
-		if path == "/" {
-			path = ""
-			lastKey = ""
-			entityPath = ""
+		lastKey := pathKeys[nkeys-1]
+
+		if lastKey == "" {
+			// this means the request was made with an ending slash (for example:
+			// https://my.summadb.com/path/to/here/), so it wants couchdb-like information
+			// for the referred sub-database, and not the document at the referred path.
+			// to get information on the document at the referred path the request must be
+			// made without the trailing slash (or with a special header, for the root document
+			// and other scenarios in which the user does not have control over the presence
+			// of the ending slash).
+			wantsDatabaseInfo = true
+
+			if path == "/" {
+				path = ""
+				lastKey = ""
+				entityPath = ""
+			}
 		} else {
-			lastKey = pathKeys[nkeys-1]
 			if lastKey[0] == '_' {
 				wantsTree = false
 				entityPath = db.JoinKeys(pathKeys[:nkeys-1])
@@ -88,8 +102,8 @@ func setCommonVariables(next http.Handler) http.Handler {
 			body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 			if err != nil {
 				log.Print("couldn't read request body: ", err)
-				res := badRequest("request body too large")
-				w.WriteHeader(res.code)
+				res := responses.BadRequest("request body too large")
+				w.WriteHeader(res.Code)
 				json.NewEncoder(w).Encode(res)
 				return
 			}
@@ -103,8 +117,8 @@ func setCommonVariables(next http.Handler) http.Handler {
 				err = json.Unmarshal(body, &jsonBody)
 				if err != nil {
 					log.Print("invalid JSON sent as JSON: ", err)
-					res := badRequest("invalid JSON sent as JSON")
-					w.WriteHeader(res.code)
+					res := responses.BadRequest("invalid JSON sent as JSON")
+					w.WriteHeader(res.Code)
 					json.NewEncoder(w).Encode(res)
 				}
 			}
@@ -128,20 +142,21 @@ func setCommonVariables(next http.Handler) http.Handler {
 
 		if revfail {
 			log.Print("multiple revs mismatching.")
-			res := badRequest("different rev values were sent")
-			w.WriteHeader(res.code)
+			res := responses.BadRequest("different rev values were sent")
+			w.WriteHeader(res.Code)
 			json.NewEncoder(w).Encode(res)
 			return
 		}
 
 		context.Set(r, k, common{
-			body:      body,
-			jsonBody:  jsonBody,
-			path:      path,
-			pathKeys:  pathKeys,
-			nkeys:     nkeys,
-			lastKey:   lastKey,
-			wantsTree: wantsTree,
+			body:              body,
+			jsonBody:          jsonBody,
+			path:              path,
+			pathKeys:          pathKeys,
+			nkeys:             nkeys,
+			lastKey:           lastKey,
+			wantsTree:         wantsTree,
+			wantsDatabaseInfo: wantsDatabaseInfo,
 
 			actualRev:   actualRev,
 			deleted:     deleted,
