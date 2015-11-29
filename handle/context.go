@@ -117,7 +117,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 			if isTree {
 				err = json.Unmarshal(body, &jsonBody)
 				if err != nil {
-					log.Error("invalid JSON sent as JSON: ", err)
+					log.Error("invalid JSON sent as JSON: ", err, " || ", string(body))
 					res := responses.BadRequest("invalid JSON sent as JSON")
 					w.WriteHeader(res.Code)
 					json.NewEncoder(w).Encode(res)

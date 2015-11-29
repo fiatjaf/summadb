@@ -28,6 +28,16 @@ type DatabaseInfo struct {
 	CompactRunning    bool   `json:"compact_running"`
 }
 
+type Revisions struct {
+	Start int      `json:"start"`
+	Ids   []string `json:"ids"`
+}
+
+type RevInfo struct {
+	Rev    string `json:"rev"`
+	Status string `json:"status"`
+}
+
 type Changes struct {
 	LastSeq uint64      `json:"last_seq"`
 	Results []db.Change `json:"results"`

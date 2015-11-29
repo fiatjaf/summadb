@@ -176,6 +176,8 @@ func bumpPathInBatch(
 	newrev = NewRev(string(oldrev))
 	batch.Put(DOC_STORE, []byte(path+"/_rev"), []byte(newrev))
 
+	batch.Put(REV_STORE, []byte(path+"::"+newrev), []byte{})
+
 	// bumping seq
 	pathkeys := SplitKeys(path)
 	nkeys := len(pathkeys)

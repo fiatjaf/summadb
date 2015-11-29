@@ -89,3 +89,32 @@ func getUpdateSeq(db *sublevel.AbstractLevel) uint64 {
 	}
 	return 0
 }
+
+func RevsAt(path string) (revs []string, err error) {
+	seqs := Open().Sub(REV_STORE)
+	defer seqs.Close()
+
+	basepath := path + "::"
+	lenbase := len(basepath)
+	already := make(map[string]bool)
+	iter := seqs.NewIterator(util.BytesPrefix([]byte(basepath)), nil)
+	i := 0
+	for iter.Next() {
+		rev := string(iter.Key())[lenbase:]
+		revid := strings.Split(rev, "-")[0]
+		if _, there := already[revid]; there {
+			revs[i] = rev
+		} else {
+			revs = append(revs, rev)
+			already[revid] = true
+			i++
+		}
+	}
+	iter.Release()
+	err = iter.Error()
+	if err != nil {
+		return revs, err
+	}
+
+	return revs, nil
+}

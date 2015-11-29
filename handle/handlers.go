@@ -2,7 +2,10 @@ package handle
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -43,9 +46,45 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	if ctx.wantsTree {
 		var tree map[string]interface{}
 		tree, err = db.GetTreeAt(ctx.path)
-		tree["_id"] = ctx.lastKey
-		tree["_rev"] = ctx.actualRev
 		if err == nil {
+			tree["_id"] = ctx.lastKey
+			tree["_rev"] = ctx.actualRev
+
+			if flag(r, "revs") {
+				var revs []string
+				revs, err = db.RevsAt(ctx.path)
+				if err == nil {
+					var start int
+					start, err = strconv.Atoi(strings.Split(revs[0], "-")[0])
+					revids := make([]string, len(revs))
+					for i, rev := range revs {
+						revids[i] = strings.Split(rev, "-")[1]
+					}
+					tree["_revisions"] = responses.Revisions{
+						Start: start,
+						Ids:   revids,
+					}
+				}
+			}
+
+			if flag(r, "revs_info") {
+				var revs []string
+				revs, err = db.RevsAt(ctx.path)
+				if err == nil {
+					revsInfo := make([]responses.RevInfo, len(revs))
+					i := 0
+					for r := len(revs) - 1; r >= 0; r-- {
+						revsInfo[i] = responses.RevInfo{
+							Rev:    revs[r],
+							Status: "missing",
+						}
+						i++
+					}
+					revsInfo[0].Status = "available"
+					tree["_revs_info"] = revsInfo
+				}
+			}
+
 			response, err = json.Marshal(tree)
 		}
 	} else {
@@ -129,13 +168,6 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var rev string
 
-	if ctx.lastKey[0] == '_' {
-		res := responses.BadRequest("you can't update special keys")
-		w.WriteHeader(res.Code)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
-
 	if ctx.exists && ctx.actualRev != ctx.providedRev {
 		log.WithFields(log.Fields{
 			"given":  ctx.providedRev,
@@ -147,12 +179,25 @@ func Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ctx.jsonBody != nil {
-		// if it is JSON we must save it as its structure demands
+	if ctx.lastKey == "_val" || ctx.jsonBody == nil {
+		// updating the value at only this specific path, as raw bytes
+		rev, err = db.SaveValueAt(ctx.path, db.ToLevel(ctx.body))
+	} else if ctx.jsonBody != nil {
+		// saving a JSON tree, as its structure demands, expanding to subpaths and so on
+		if ctx.lastKey[0] == '_' {
+			log.WithFields(log.Fields{
+				"path":    ctx.path,
+				"lastkey": ctx.lastKey,
+			}).Debug("couldn't update special key.")
+			res := responses.BadRequest("you can't update special keys")
+			w.WriteHeader(res.Code)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
 		rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody)
 	} else {
-		// otherwise just save it as a string
-		rev, err = db.SaveValueAt(ctx.path, db.ToLevel(ctx.body))
+		err = errors.New("value received at " + ctx.path + " is not JSON: " + string(ctx.body))
 	}
 
 	if err != nil {
