@@ -8,6 +8,13 @@ import (
 )
 
 func BuildHTTPHandler() *interpose.Middleware {
+	//log.WithFields(log.Fields{
+	//	"DBFILE":       settings.DBFILE,
+	//	"PORT":         settings.PORT,
+	//	"CORS_ORIGINS": settings.CORS_ORIGINS,
+	//	"STARTTIME":    settings.STARTTIME,
+	//}).Info("starting database server.")
+
 	// middleware
 	middle := interpose.New()
 	middle.Use(setCommonVariables)
@@ -28,6 +35,7 @@ func BuildHTTPHandler() *interpose.Middleware {
 	router.HandleFunc("/{path:.*}", Put).Methods("PUT")
 	router.HandleFunc("/{path:.*}", Patch).Methods("PATCH")
 	router.HandleFunc("/{path:.*}", Delete).Methods("DELETE")
+	router.HandleFunc("/{path:.*}", Post).Methods("POST")
 
 	return middle
 }

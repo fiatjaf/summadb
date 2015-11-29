@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 
-	db "github.com/fiatjaf/summadb/database"
-	"github.com/fiatjaf/summadb/handle/responses"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
+
+	db "github.com/fiatjaf/summadb/database"
+	responses "github.com/fiatjaf/summadb/handle/responses"
 )
 
 const k int = iota
@@ -85,6 +85,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 		revfail := false
 		qrev := r.URL.Query().Get("rev")
 		hrev := r.Header.Get("If-Match")
+		drev := ""
 		providedRev := hrev // will be "" if there's no header rev
 		if qrev != "" {
 			if hrev != "" && qrev != hrev {
@@ -101,7 +102,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 			/* filter body size */
 			body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
 			if err != nil {
-				log.Print("couldn't read request body: ", err)
+				log.Error("couldn't read request body: ", err)
 				res := responses.BadRequest("request body too large")
 				w.WriteHeader(res.Code)
 				json.NewEncoder(w).Encode(res)
@@ -116,7 +117,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 			if isTree {
 				err = json.Unmarshal(body, &jsonBody)
 				if err != nil {
-					log.Print("invalid JSON sent as JSON: ", err)
+					log.Error("invalid JSON sent as JSON: ", err)
 					res := responses.BadRequest("invalid JSON sent as JSON")
 					w.WriteHeader(res.Code)
 					json.NewEncoder(w).Encode(res)
@@ -141,7 +142,11 @@ func setCommonVariables(next http.Handler) http.Handler {
 		}
 
 		if revfail {
-			log.Print("multiple revs mismatching.")
+			log.WithFields(log.Fields{
+				"drev": drev,
+				"qrev": qrev,
+				"hrev": hrev,
+			}).Error("multiple revs mismatching.")
 			res := responses.BadRequest("different rev values were sent")
 			w.WriteHeader(res.Code)
 			json.NewEncoder(w).Encode(res)

@@ -30,12 +30,12 @@ var _ = BeforeEach(func() {
 	server = handle.BuildHTTPHandler()
 })
 
-func value(v string) map[string]interface{} {
+func value(v interface{}) map[string]interface{} {
 	return map[string]interface{}{"_val": v}
 }
 
-func populateDB() {
-	db.SaveTreeAt("", map[string]interface{}{
+func populateDB() (err error) {
+	_, err = db.SaveTreeAt("", map[string]interface{}{
 		"_val": "root",
 		"vehicles": map[string]interface{}{
 			"_val": "things that move",
@@ -67,6 +67,7 @@ func populateDB() {
 			},
 		},
 	})
+	return err
 }
 
 func StripRandom(JSON *bytes.Buffer) string {

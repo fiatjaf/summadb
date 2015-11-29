@@ -3,6 +3,7 @@ package handle_test
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	db "github.com/fiatjaf/summadb/database"
@@ -154,6 +155,7 @@ var _ = Describe("server", func() {
 		})
 
 		It("should delete a path providing the correct rev", func() {
+			log.Print("sending rev ", rev)
 			r, _ = http.NewRequest("DELETE", "/something/here?rev="+rev, nil)
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(200))

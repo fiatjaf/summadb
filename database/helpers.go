@@ -10,15 +10,19 @@ import (
 	"github.com/fiatjaf/sublevel"
 )
 
-func NewRev(oldrev string) string {
-	n, _ := strconv.Atoi(strings.Split(oldrev, "-")[0])
-
-	random := make([]byte, 5)
+func Random(bytes int) string {
+	random := make([]byte, bytes)
 	_, err := rand.Read(random)
 	if err != nil {
 		log.Fatal("Couldn't read random bytes: ", err)
 	}
-	return fmt.Sprintf("%d-%x", (n + 1), random)
+	return fmt.Sprintf("%x", random)
+}
+
+func NewRev(oldrev string) string {
+	n, _ := strconv.Atoi(strings.Split(oldrev, "-")[0])
+
+	return fmt.Sprintf("%d-%s", (n + 1), Random(5))
 }
 
 func GetRev(db *sublevel.Sublevel, path string) []byte {

@@ -140,6 +140,72 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
+func BulkGet(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+	var ireqs interface{}
+
+	if ctx.jsonBody == nil {
+		res := responses.BadRequest("you need to send a JSON body for this request.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	/* options */
+	revs := flag(r, "revs")
+
+	var ok bool
+	if ireqs, ok = ctx.jsonBody["docs"]; !ok {
+		res := responses.BadRequest("you need to send a JSON body for this request.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	reqs := ireqs.([]interface{})
+	res := responses.BulkGet{
+		Responses: make([]responses.BulkGetResult, len(reqs)),
+	}
+	for i, ireq := range reqs {
+		req := ireq.(map[string]interface{})
+		res.Responses[i] = responses.BulkGetResult{
+			Docs: make([]responses.DocOrError, 1),
+		}
+
+		iid, ok := req["id"]
+		if !ok {
+			err := responses.BadRequest("missing id")
+			res.Responses[i].Docs[0].Error = &err
+			continue
+		}
+		id := iid.(string)
+		res.Responses[i].Id = id
+
+		path := db.CleanPath(ctx.path) + "/" + id
+		doc, err1 := db.GetTreeAt(path)
+		specialKeys, err2 := db.GetSpecialKeysAt(path)
+		if err1 != nil || err2 != nil {
+			err := responses.NotFound()
+			res.Responses[i].Docs[0].Error = &err
+			continue
+		}
+
+		doc["_id"] = id
+		doc["_rev"] = specialKeys.Rev
+
+		if revs {
+			// magic method to fetch _revisions
+			// docs["_revisions"] = ...
+		}
+
+		res.Responses[i].Docs[0].Ok = &doc
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(res)
+}
+
 // this method only exists for compatibility with PouchDB and should not be used.
 //func BulkDocs(w http.ResponseWriter, r *http.Request) {
 //	ctx := getContext(r)

@@ -3,7 +3,10 @@ package database
 import (
 	"os"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/fiatjaf/sublevel"
+
+	settings "github.com/fiatjaf/summadb/settings"
 )
 
 const (
@@ -13,20 +16,19 @@ const (
 	UPDATE_SEQ_KEY = "_update_seq_key"
 )
 
-func GetDBFile() string {
-	dbfile := os.Getenv("LEVELDB_PATH")
-	if dbfile == "" {
-		dbfile = "/tmp/summa.db"
-	}
-	return dbfile
-}
-
 func Open() *sublevel.AbstractLevel {
-	dbfile := GetDBFile()
-	return sublevel.MustOpen(dbfile, nil)
+	dbfile := settings.DBFILE
+	db, err := sublevel.Open(dbfile, nil)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error":  err,
+			"DBFILE": settings.DBFILE,
+		}).Fatal("couldn't open database file.")
+	}
+	return db
 }
 
 func Erase() error {
-	dbfile := GetDBFile()
+	dbfile := settings.DBFILE
 	return os.RemoveAll(dbfile)
 }

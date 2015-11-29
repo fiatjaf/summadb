@@ -45,3 +45,17 @@ type Row struct {
 	Value interface{}            `json:"value"`
 	Doc   map[string]interface{} `json:"doc"`
 }
+
+type BulkGet struct {
+	Responses []BulkGetResult `json:"responses"`
+}
+
+type BulkGetResult struct {
+	Id   string       `json:"id"`
+	Docs []DocOrError `json:"docs"`
+}
+
+type DocOrError struct {
+	Ok    *map[string]interface{} `json:"ok, omitempty"`
+	Error *Error                  `json:"error, omitempty"`
+}

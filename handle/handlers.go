@@ -2,8 +2,9 @@ package handle
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+
+	log "github.com/Sirupsen/logrus"
 
 	db "github.com/fiatjaf/summadb/database"
 	responses "github.com/fiatjaf/summadb/handle/responses"
@@ -56,7 +57,7 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Print("responses.Unknown error: ", err)
+		log.Error("unknown error: ", err)
 		res := responses.UnknownError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -66,6 +67,51 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(response)
+}
+
+func Post(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+	var err error
+	var rev string
+
+	if ctx.lastKey == "_bulk_get" {
+		BulkGet(w, r)
+		return
+	}
+
+	if ctx.lastKey[0] == '_' {
+		res := responses.BadRequest("you can't post to special keys.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	// POST is supposed to generate a new doc, with a new random _id:
+	id := db.Random(7)
+	path := ctx.path + "/" + id
+
+	if ctx.jsonBody != nil {
+		// if it is JSON we must save it as its structure demands
+		rev, err = db.SaveTreeAt(path, ctx.jsonBody)
+	} else {
+		// otherwise it's an error
+		res := responses.BadRequest("you need to send a JSON body for this request.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	if err != nil {
+		log.Error("couldn't save value: ", err)
+		res := responses.UnknownError()
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	w.WriteHeader(201)
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(responses.Success{id, true, rev})
 }
 
 /* requests with raw string bodies:
@@ -91,6 +137,10 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ctx.exists && ctx.actualRev != ctx.providedRev {
+		log.WithFields(log.Fields{
+			"given":  ctx.providedRev,
+			"actual": ctx.actualRev,
+		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -106,7 +156,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Print("couldn't save value: ", err)
+		log.Debug("couldn't save value: ", err)
 		res := responses.UnknownError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -142,6 +192,10 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ctx.actualRev != ctx.providedRev {
+		log.WithFields(log.Fields{
+			"given":  ctx.providedRev,
+			"actual": ctx.actualRev,
+		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -152,7 +206,7 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 	rev, err = db.SaveTreeAt(ctx.path, ctx.jsonBody)
 
 	if err != nil {
-		log.Print("couldn't save value: ", err)
+		log.Debug("couldn't save value: ", err)
 		res := responses.UnknownError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -184,6 +238,10 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
+		log.WithFields(log.Fields{
+			"given":  ctx.providedRev,
+			"actual": ctx.actualRev,
+		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -192,7 +250,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 	rev, err = db.DeleteAt(ctx.path)
 	if err != nil {
-		log.Print("couldn't delete key at ", ctx.path, ": ", err)
+		log.Error("couldn't delete key at ", ctx.path, ": ", err)
 		res := responses.NotFound()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
