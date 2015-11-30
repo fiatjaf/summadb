@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -57,3 +58,12 @@ func CleanPath(path string) string {
 //func BaseAndLastKey(path string) (base string, last string) {
 //
 //}
+
+func EscapeKey(e string) string {
+	return url.QueryEscape(e)
+}
+
+func UnescapeKey(e string) string {
+	v, _ := url.QueryUnescape(e)
+	return v
+}

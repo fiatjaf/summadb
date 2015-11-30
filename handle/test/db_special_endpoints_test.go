@@ -3,8 +3,11 @@ package handle_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
+	"strings"
 
 	db "github.com/fiatjaf/summadb/database"
 	responses "github.com/fiatjaf/summadb/handle/responses"
@@ -13,9 +16,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("all docs", func() {
-	Context("_all_docs HTTP", func() {
+var _ = Describe("db special endpoints", func() {
+	Context("couchdb stuff, mostly", func() {
 		var rev string
+		var id string
 
 		It("should erase the db and prepopulate", func() {
 			Expect(db.Erase()).To(Succeed())
@@ -80,20 +84,54 @@ var _ = Describe("all docs", func() {
 
 			var res responses.BulkGet
 			json.Unmarshal(rec.Body.Bytes(), &res)
-			Expect(res.Responses[0].Docs[0].Ok).To(BeNil())
-			Expect(res.Responses[0].Docs[0].Error).ToNot(BeNil())
-			Expect(res.Responses[1].Docs[0].Ok).ToNot(BeNil())
-			Expect(res.Responses[1].Docs[0].Error).To(BeNil())
-			doc := *res.Responses[1].Docs[0].Ok
+			Expect(res.Results[0].Docs[0].Ok).To(BeNil())
+			Expect(res.Results[0].Docs[0].Error).ToNot(BeNil())
+			Expect(res.Results[1].Docs[0].Ok).ToNot(BeNil())
+			Expect(res.Results[1].Docs[0].Error).To(BeNil())
+			doc := *res.Results[1].Docs[0].Ok
 			id, _ := doc["_id"]
 			irev, _ := doc["_rev"]
 			rev = irev.(string)
 			water, _ := doc["water"]
 			Expect(id.(string)).To(Equal("car"))
-			Expect(res.Responses[1].Id).To(Equal(id))
+			Expect(res.Results[1].Id).To(Equal(id))
 			Expect(water).To(BeEquivalentTo(value(false)))
-			Expect(res.Responses[2].Docs[0].Ok).To(BeNil())
-			Expect(res.Responses[0].Docs[0].Error).ToNot(BeNil())
+			Expect(res.Results[2].Docs[0].Ok).To(BeNil())
+			Expect(res.Results[0].Docs[0].Error).ToNot(BeNil())
+		})
+
+		It("should post docs with _bulk_docs", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/_bulk_docs", bytes.NewReader([]byte(`{
+                "docs": [
+                    {"everywhere": true},
+                    {"_id": "car", "_rev": "`+rev+`", "space": false, "land": true},
+                    {"_id": "airplane", "nowhere": false},
+                    {"_id": "_local/.abchtru", "replication+data": "k"}
+                ]
+            }`)))
+			server.ServeHTTP(rec, r)
+
+			Expect(rec.Code).To(Equal(201))
+			var res []responses.BulkDocsResult
+			json.Unmarshal(rec.Body.Bytes(), &res)
+
+			Expect(res).To(HaveLen(4))
+			Expect(res[0].Error).To(Equal(""))
+			Expect(res[0].Ok).To(Equal(true))
+			Expect(res[0].Rev).To(HavePrefix("1-"))
+			id = res[0].Id
+			Expect(res[1].Id).To(Equal("car"))
+			prevn, _ := strconv.Atoi(strings.Split(rev, "-")[0])
+			Expect(res[1].Rev).To(HavePrefix(fmt.Sprintf("%d-", prevn+1)))
+			cfe := responses.ConflictError()
+			Expect(res[2].Error).To(Equal(cfe.Error))
+			Expect(res[3].Id).To(Equal("_local/.abchtru"))
+			Expect(res[3].Ok).To(Equal(true))
+		})
+
+		It("should have the correct docs saved", func() {
+			Expect(db.GetValueAt("/vehicles/" + id + "/everywhere")).To(BeEquivalentTo("true"))
+			Expect(db.GetValueAt("/vehicles/_local%2F.abchtru/replication%2Bdata")).To(BeEquivalentTo(`"k"`))
 		})
 	})
 })

@@ -5,6 +5,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiatjaf/sublevel"
+	"github.com/syndtr/goleveldb/leveldb/filter"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 
 	settings "github.com/fiatjaf/summadb/settings"
 )
@@ -19,7 +21,9 @@ const (
 
 func Open() *sublevel.AbstractLevel {
 	dbfile := settings.DBFILE
-	db, err := sublevel.Open(dbfile, nil)
+	db, err := sublevel.Open(dbfile, &opt.Options{
+		Filter: filter.NewBloomFilter(10),
+	})
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":  err,

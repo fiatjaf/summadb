@@ -2,9 +2,10 @@ package handle
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
+
+	log "github.com/Sirupsen/logrus"
 
 	db "github.com/fiatjaf/summadb/database"
 	responses "github.com/fiatjaf/summadb/handle/responses"
@@ -140,6 +141,7 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
+// this method only exists for compatibility with PouchDB and should not be used elsewhere.
 func BulkGet(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
 	var ireqs interface{}
@@ -156,7 +158,7 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 
 	var ok bool
 	if ireqs, ok = ctx.jsonBody["docs"]; !ok {
-		res := responses.BadRequest("you need to send a JSON body for this request.")
+		res := responses.BadRequest("You were supposed to request some docs specified by their ids, and you didn't.")
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
@@ -164,29 +166,29 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 
 	reqs := ireqs.([]interface{})
 	res := responses.BulkGet{
-		Responses: make([]responses.BulkGetResult, len(reqs)),
+		Results: make([]responses.BulkGetResult, len(reqs)),
 	}
 	for i, ireq := range reqs {
 		req := ireq.(map[string]interface{})
-		res.Responses[i] = responses.BulkGetResult{
+		res.Results[i] = responses.BulkGetResult{
 			Docs: make([]responses.DocOrError, 1),
 		}
 
 		iid, ok := req["id"]
 		if !ok {
 			err := responses.BadRequest("missing id")
-			res.Responses[i].Docs[0].Error = &err
+			res.Results[i].Docs[0].Error = &err
 			continue
 		}
 		id := iid.(string)
-		res.Responses[i].Id = id
+		res.Results[i].Id = id
 
 		path := db.CleanPath(ctx.path) + "/" + id
 		doc, err1 := db.GetTreeAt(path)
 		specialKeys, err2 := db.GetSpecialKeysAt(path)
 		if err1 != nil || err2 != nil {
 			err := responses.NotFound()
-			res.Responses[i].Docs[0].Error = &err
+			res.Results[i].Docs[0].Error = &err
 			continue
 		}
 
@@ -198,7 +200,7 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 			// docs["_revisions"] = ...
 		}
 
-		res.Responses[i].Docs[0].Ok = &doc
+		res.Results[i].Docs[0].Ok = &doc
 	}
 
 	w.Header().Add("Content-Type", "application/json")
@@ -206,9 +208,78 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-// this method only exists for compatibility with PouchDB and should not be used.
-//func BulkDocs(w http.ResponseWriter, r *http.Request) {
-//	ctx := getContext(r)
-//
-//
-//}
+// this method only exists for compatibility with PouchDB and should not be used elsewhere.
+func BulkDocs(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+	var idocs interface{}
+	var ok bool
+
+	if ctx.jsonBody == nil {
+		res := responses.BadRequest("you need to send a JSON body for this request.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	if idocs, ok = ctx.jsonBody["docs"]; !ok {
+		res := responses.BadRequest("You're supposed to send an array of docs to input on the database, and you didn't.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	path := db.CleanPath(ctx.path)
+	docs := idocs.([]interface{})
+	res := make([]responses.BulkDocsResult, len(docs))
+	for i, idoc := range docs {
+		doc := idoc.(map[string]interface{})
+		var iid interface{}
+		var id string
+		var irev interface{}
+		var rev string
+		if iid, ok = doc["_id"]; ok {
+			id = iid.(string)
+			if irev, ok = doc["_rev"]; ok {
+				rev = irev.(string)
+			}
+		} else {
+			id = db.Random(5)
+		}
+		delete(doc, "_rev")
+		delete(doc, "_id")
+
+		// check rev matching:
+		if iid != nil /* when iid is nil that means the doc had no _id, so we don't have to check. */ {
+			actualRev, err := db.GetValueAt(path + "/" + id + "/_rev")
+			/* err!=nil means there's no _rev, so ok */
+			if err == nil && string(actualRev) != rev {
+				e := responses.ConflictError()
+				res[i] = responses.BulkDocsResult{
+					Id:     id,
+					Error:  e.Error,
+					Reason: e.Reason,
+				}
+				continue
+			}
+		}
+
+		// proceed to write.
+		newrev, err := db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc)
+		if err != nil {
+			e := responses.UnknownError()
+			res[i] = responses.BulkDocsResult{
+				Id:     id,
+				Error:  e.Error,
+				Reason: e.Reason,
+			}
+			continue
+		}
+		res[i] = responses.BulkDocsResult{
+			Id:  id,
+			Ok:  true,
+			Rev: newrev,
+		}
+	}
+	w.WriteHeader(201)
+	json.NewEncoder(w).Encode(res)
+}

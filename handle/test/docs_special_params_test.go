@@ -13,7 +13,7 @@ import (
 )
 
 var _ = Describe("docs special params", func() {
-	Context("revs related things", func() {
+	Context("revs related things, couchdb stuff", func() {
 		var rev string
 
 		It("should erase the db and prepopulate", func() {

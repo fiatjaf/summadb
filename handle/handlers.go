@@ -116,6 +116,9 @@ func Post(w http.ResponseWriter, r *http.Request) {
 	if ctx.lastKey == "_bulk_get" {
 		BulkGet(w, r)
 		return
+	} else if ctx.lastKey == "_bulk_docs" {
+		BulkDocs(w, r)
+		return
 	}
 
 	if ctx.lastKey[0] == '_' {

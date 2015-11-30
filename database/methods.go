@@ -94,7 +94,7 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 					   create it */
 					subtree = make(map[string]interface{})
 				}
-				tree[subkey] = subtree
+				tree[UnescapeKey(subkey)] = subtree
 				tree = subtree // descend into that level
 			}
 			// no more levels to descend into, apply the value to our response object
@@ -192,7 +192,7 @@ func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[s
 				sliceAsTree[fmt.Sprintf("%d", i)] = rv.Index(i).Interface()
 			}
 			// we proceed as if it were a map
-			txn, err = saveObjectAt(db, txn, base+"/"+k, sliceAsTree)
+			txn, err = saveObjectAt(db, txn, base+"/"+EscapeKey(k), sliceAsTree)
 			if err != nil {
 				return nil, err
 			}
@@ -201,16 +201,16 @@ func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[s
 		if v == nil || rv.Kind() != reflect.Map {
 			if v == nil {
 				// setting a value to null should delete it
-				txn = txn.prepare(DELETE, base+"/"+k, nil)
+				txn = txn.prepare(DELETE, base+"/"+EscapeKey(k), nil)
 			} else {
 				/* actually set */
-				txn = txn.prepare(SAVE, base+"/"+k, ToLevel(v))
+				txn = txn.prepare(SAVE, base+"/"+EscapeKey(k), ToLevel(v))
 			}
 			continue
 		}
 
 		/* it's a map, so proceed to do add more things deeply into the tree */
-		txn, err = saveObjectAt(db, txn, base+"/"+k, v.(map[string]interface{}))
+		txn, err = saveObjectAt(db, txn, base+"/"+EscapeKey(k), v.(map[string]interface{}))
 		if err != nil {
 			return nil, err
 		}

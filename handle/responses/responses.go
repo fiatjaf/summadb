@@ -57,7 +57,7 @@ type Row struct {
 }
 
 type BulkGet struct {
-	Responses []BulkGetResult `json:"responses"`
+	Results []BulkGetResult `json:"results"`
 }
 
 type BulkGetResult struct {
@@ -66,6 +66,14 @@ type BulkGetResult struct {
 }
 
 type DocOrError struct {
-	Ok    *map[string]interface{} `json:"ok, omitempty"`
-	Error *Error                  `json:"error, omitempty"`
+	Ok    *map[string]interface{} `json:"ok,omitempty"`
+	Error *Error                  `json:"error,omitempty"`
+}
+
+type BulkDocsResult struct {
+	Id     string `json:"id"`
+	Ok     bool   `json:"ok,omitempty"`
+	Rev    string `json:"rev,omitempty"`
+	Error  string `json:"error,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
