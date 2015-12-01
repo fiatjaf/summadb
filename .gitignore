@@ -3,3 +3,4 @@
 *.swo
 .lev_history
 summadb
+npm-debug.log
