@@ -27,8 +27,6 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	} else if ctx.lastKey == "_all_docs" {
 		AllDocs(w, r)
 		return
-	} else if ctx.lastKey == "_revs_diff" {
-		return
 	} else if ctx.lastKey == "_missing_revs" {
 		return
 	}
@@ -113,11 +111,21 @@ func Post(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var rev string
 
+	if ctx.jsonBody == nil {
+		res := responses.BadRequest("You must send a JSON body for this request.")
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
 	if ctx.lastKey == "_bulk_get" {
 		BulkGet(w, r)
 		return
 	} else if ctx.lastKey == "_bulk_docs" {
 		BulkDocs(w, r)
+		return
+	} else if ctx.lastKey == "_revs_diff" {
+		RevsDiff(w, r)
 		return
 	}
 

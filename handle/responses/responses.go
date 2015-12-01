@@ -77,3 +77,7 @@ type BulkDocsResult struct {
 	Error  string `json:"error,omitempty"`
 	Reason string `json:"reason,omitempty"`
 }
+
+type RevsDiffResult struct {
+	Missing []string `json:"missing,omitempty"`
+}

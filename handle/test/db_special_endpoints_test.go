@@ -19,6 +19,7 @@ import (
 var _ = Describe("db special endpoints", func() {
 	Context("couchdb stuff, mostly", func() {
 		var rev string
+		var oldrev string
 		var id string
 
 		It("should erase the db and prepopulate", func() {
@@ -123,6 +124,8 @@ var _ = Describe("db special endpoints", func() {
 			Expect(res[1].Id).To(Equal("car"))
 			prevn, _ := strconv.Atoi(strings.Split(rev, "-")[0])
 			Expect(res[1].Rev).To(HavePrefix(fmt.Sprintf("%d-", prevn+1)))
+			oldrev = rev
+			rev = res[1].Rev
 			cfe := responses.ConflictError()
 			Expect(res[2].Error).To(Equal(cfe.Error))
 			Expect(res[3].Id).To(Equal("_local/.abchtru"))
@@ -132,6 +135,34 @@ var _ = Describe("db special endpoints", func() {
 		It("should have the correct docs saved", func() {
 			Expect(db.GetValueAt("/vehicles/" + id + "/everywhere")).To(BeEquivalentTo("true"))
 			Expect(db.GetValueAt("/vehicles/_local%2F.abchtru/replication%2Bdata")).To(BeEquivalentTo(`"k"`))
+		})
+
+		It("shouldn't show _local docs on _all_docs", func() {
+			r, _ = http.NewRequest("GET", "/vehicles/_all_docs", nil)
+			server.ServeHTTP(rec, r)
+			var res responses.AllDocs
+			json.Unmarshal(rec.Body.Bytes(), &res)
+			Expect(res.Rows).To(HaveLen(4))
+		})
+
+		It("should return the _revs_diff", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/_revs_diff", bytes.NewReader([]byte(`{
+                "everywhere": ["2-invalidrev"],
+                "car": ["`+oldrev+`", "`+rev+`", "1-invalidrev"],
+                "airplane": ["1-nonexisting"]
+            }`)))
+			server.ServeHTTP(rec, r)
+
+			Expect(rec.Code).To(Equal(200))
+			var res map[string]responses.RevsDiffResult
+			json.Unmarshal(rec.Body.Bytes(), &res)
+
+			everywhere, _ := res["everywhere"]
+			car, _ := res["car"]
+			airplane, _ := res["airplane"]
+			Expect(everywhere.Missing).To(Equal([]string{"2-invalidrev"}))
+			Expect(car.Missing).To(Equal([]string{oldrev, "1-invalidrev"}))
+			Expect(airplane.Missing).To(Equal([]string{"1-nonexisting"}))
 		})
 	})
 })

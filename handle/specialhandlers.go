@@ -146,13 +146,6 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
 	var ireqs interface{}
 
-	if ctx.jsonBody == nil {
-		res := responses.BadRequest("you need to send a JSON body for this request.")
-		w.WriteHeader(res.Code)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
-
 	/* options */
 	revs := flag(r, "revs")
 
@@ -214,13 +207,6 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 	var idocs interface{}
 	var ok bool
 
-	if ctx.jsonBody == nil {
-		res := responses.BadRequest("you need to send a JSON body for this request.")
-		w.WriteHeader(res.Code)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
-
 	if idocs, ok = ctx.jsonBody["docs"]; !ok {
 		res := responses.BadRequest("You're supposed to send an array of docs to input on the database, and you didn't.")
 		w.WriteHeader(res.Code)
@@ -281,5 +267,42 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(201)
+	json.NewEncoder(w).Encode(res)
+}
+
+// this method only exists for compatibility with PouchDB and should not be used elsewhere.
+func RevsDiff(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+
+	path := db.CleanPath(ctx.path)
+
+	res := make(map[string]responses.RevsDiffResult)
+	for id, irevs := range ctx.jsonBody {
+		var missing []string
+
+		currentRevb, err := db.GetValueAt(path + "/" + id + "/_rev")
+		if err != nil {
+			/* no _rev for this id, means it has never been inserted in this database.
+			   let's say we miss all the revs. */
+			for _, irev := range irevs.([]interface{}) {
+				rev := irev.(string)
+				missing = append(missing, rev)
+			}
+		} else {
+			/* otherwise we will say we have the current rev and none of the others,
+			   because that's the truth. */
+			currentRev := string(currentRevb)
+			for _, irev := range irevs.([]interface{}) {
+				rev := irev.(string)
+				if rev != currentRev {
+					missing = append(missing, rev)
+				}
+			}
+		}
+
+		res[id] = responses.RevsDiffResult{Missing: missing}
+	}
+
+	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(res)
 }
