@@ -12,7 +12,7 @@ var summa = "http://spooner.alhur.es:5000/subdb"
 const value = v => Object({_val: v})
 
 describe('integration', function () {
-  this.timeout(4000)
+  this.timeout(40000)
 
   before(() => {
     return Promise.resolve().then(() => {
@@ -76,7 +76,7 @@ describe('integration', function () {
           fetch(summa + '/that').then(r => r.json()),
           fetch(summa + '/array').then(r => r.json()),
           fetch(summa + '/complex').then(r => r.json()),
-        ]).then(that, array, complex => {
+        ]).then((that, array, complex) => {
           expect(that._id).to.equal('that')
           expect(that._rev).to.equal(revs[1])
           expect(array._id).to.equal('array')

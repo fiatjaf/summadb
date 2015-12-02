@@ -7,7 +7,7 @@ import (
 	"github.com/rs/cors"
 )
 
-func BuildHTTPHandler() *interpose.Middleware {
+func BuildHTTPMux() *interpose.Middleware {
 	//log.WithFields(log.Fields{
 	//	"DBFILE":       settings.DBFILE,
 	//	"PORT":         settings.PORT,

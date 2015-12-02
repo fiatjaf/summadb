@@ -79,5 +79,5 @@ type BulkDocsResult struct {
 }
 
 type RevsDiffResult struct {
-	Missing []string `json:"missing,omitempty"`
+	Missing []string `json:"missing"`
 }

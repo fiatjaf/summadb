@@ -278,7 +278,7 @@ func RevsDiff(w http.ResponseWriter, r *http.Request) {
 
 	res := make(map[string]responses.RevsDiffResult)
 	for id, irevs := range ctx.jsonBody {
-		var missing []string
+		missing := make([]string, 0)
 
 		currentRevb, err := db.GetValueAt(path + "/" + id + "/_rev")
 		if err != nil {

@@ -19,9 +19,12 @@ const (
 	UPDATE_SEQ_KEY = "_update_seq_key"
 )
 
-func Open() *sublevel.AbstractLevel {
+var db *sublevel.AbstractLevel
+
+func Start() {
 	dbfile := settings.DBFILE
-	db, err := sublevel.Open(dbfile, &opt.Options{
+	var err error
+	db, err = sublevel.Open(dbfile, &opt.Options{
 		Filter: filter.NewBloomFilter(10),
 	})
 	if err != nil {
@@ -30,10 +33,16 @@ func Open() *sublevel.AbstractLevel {
 			"DBFILE": settings.DBFILE,
 		}).Fatal("couldn't open database file.")
 	}
-	return db
+}
+
+func End() {
+	db.Close()
 }
 
 func Erase() error {
+	End()
 	dbfile := settings.DBFILE
-	return os.RemoveAll(dbfile)
+	err := os.RemoveAll(dbfile)
+	Start()
+	return err
 }

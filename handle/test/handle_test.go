@@ -17,6 +17,8 @@ import (
 )
 
 func TestHTTP(t *testing.T) {
+	db.Start()
+	defer db.End()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "HTTP Suite")
 }
@@ -27,7 +29,7 @@ var rec *httptest.ResponseRecorder
 
 var _ = BeforeEach(func() {
 	rec = httptest.NewRecorder()
-	server = handle.BuildHTTPHandler()
+	server = handle.BuildHTTPMux()
 })
 
 func value(v interface{}) map[string]interface{} {

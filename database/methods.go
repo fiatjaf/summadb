@@ -5,13 +5,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/fiatjaf/sublevel"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func GetValueAt(path string) ([]byte, error) {
-	docs := Open().Sub(DOC_STORE)
-	defer docs.Close()
+	docs := db.Sub(DOC_STORE)
 
 	bs, err := docs.Get([]byte(path), nil)
 	if err != nil {
@@ -25,8 +23,7 @@ func GetSpecialKeysAt(basepath string) (specialKeys struct {
 	Rev     string
 	Deleted bool
 }, err error) {
-	docs := Open().Sub(DOC_STORE)
-	defer docs.Close()
+	docs := db.Sub(DOC_STORE)
 
 	basepath = basepath + "/_"
 	baseLength := len(basepath)
@@ -50,8 +47,7 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	/* TODO consider writing a variation of this that will fetch _revs and other special
 	   things. */
 
-	docs := Open().Sub(DOC_STORE)
-	defer docs.Close()
+	docs := db.Sub(DOC_STORE)
 
 	// check if this tree is touched
 	_, err := docs.Get([]byte(basepath+"/_rev"), nil)
@@ -112,12 +108,9 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 }
 
 func SaveValueAt(path string, bs []byte) (newrev string, err error) {
-	db := Open()
-	defer db.Close()
-
 	txn := make(prepared)
 	txn.prepare(SAVE, path, bs)
-	txn, err = txn.commit(db)
+	txn, err = txn.commit()
 	if err != nil {
 		return "", err
 	}
@@ -125,12 +118,9 @@ func SaveValueAt(path string, bs []byte) (newrev string, err error) {
 }
 
 func DeleteAt(path string) (newrev string, err error) {
-	db := Open()
-	defer db.Close()
-
 	txn := make(prepared)
 	txn = txn.prepare(DELETE, path, nil)
-	txn, err = txn.commit(db)
+	txn, err = txn.commit()
 	if err != nil {
 		return "", err
 	}
@@ -138,16 +128,13 @@ func DeleteAt(path string) (newrev string, err error) {
 }
 
 func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
-	db := Open()
-	defer db.Close()
-
 	txn := make(prepared)
 	txn = txn.reset(path)
-	txn, err = saveObjectAt(db, txn, path, tree)
+	txn, err = saveObjectAt(txn, path, tree)
 	if err != nil {
 		return "", err
 	}
-	txn, err = txn.commit(db)
+	txn, err = txn.commit()
 	if err != nil {
 		return "", err
 	}
@@ -156,15 +143,12 @@ func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err
 }
 
 func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
-	db := Open()
-	defer db.Close()
-
 	txn := make(prepared)
-	txn, err = saveObjectAt(db, txn, path, tree)
+	txn, err = saveObjectAt(txn, path, tree)
 	if err != nil {
 		return "", err
 	}
-	txn, err = txn.commit(db)
+	txn, err = txn.commit()
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +156,7 @@ func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err er
 	return txn[path].rev, nil
 }
 
-func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[string]interface{}) (prepared, error) {
+func saveObjectAt(txn prepared, base string, o map[string]interface{}) (prepared, error) {
 	var err error
 	for k, v := range o {
 		if len(k) > 0 && k[0] == '_' {
@@ -192,7 +176,7 @@ func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[s
 				sliceAsTree[fmt.Sprintf("%d", i)] = rv.Index(i).Interface()
 			}
 			// we proceed as if it were a map
-			txn, err = saveObjectAt(db, txn, base+"/"+EscapeKey(k), sliceAsTree)
+			txn, err = saveObjectAt(txn, base+"/"+EscapeKey(k), sliceAsTree)
 			if err != nil {
 				return nil, err
 			}
@@ -210,7 +194,7 @@ func saveObjectAt(db *sublevel.AbstractLevel, txn prepared, base string, o map[s
 		}
 
 		/* it's a map, so proceed to do add more things deeply into the tree */
-		txn, err = saveObjectAt(db, txn, base+"/"+EscapeKey(k), v.(map[string]interface{}))
+		txn, err = saveObjectAt(txn, base+"/"+EscapeKey(k), v.(map[string]interface{}))
 		if err != nil {
 			return nil, err
 		}

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fiatjaf/sublevel"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -20,8 +19,7 @@ type justRev struct {
 }
 
 func ListChangesAt(path string, since uint64) ([]Change, error) {
-	seqs := Open().Sub(BY_SEQ)
-	defer seqs.Close()
+	seqs := db.Sub(BY_SEQ)
 
 	res := make([]Change, 0)
 
@@ -55,8 +53,7 @@ func ListChangesAt(path string, since uint64) ([]Change, error) {
 }
 
 func LastSeqAt(path string) (uint64, error) {
-	seqs := Open().Sub(BY_SEQ)
-	defer seqs.Close()
+	seqs := db.Sub(BY_SEQ)
 
 	var seq uint64
 	iter := seqs.NewIterator(util.BytesPrefix([]byte(path+"::")), nil)
@@ -74,13 +71,10 @@ func LastSeqAt(path string) (uint64, error) {
 }
 
 func GlobalUpdateSeq() uint64 {
-	db := Open()
-	defer db.Close()
-
-	return getUpdateSeq(db)
+	return getUpdateSeq()
 }
 
-func getUpdateSeq(db *sublevel.AbstractLevel) uint64 {
+func getUpdateSeq() uint64 {
 	seqs := db.Sub(BY_SEQ)
 	v, err := seqs.Get([]byte(UPDATE_SEQ_KEY), nil)
 	if err == nil {
@@ -91,8 +85,7 @@ func getUpdateSeq(db *sublevel.AbstractLevel) uint64 {
 }
 
 func RevsAt(path string) (revs []string, err error) {
-	seqs := Open().Sub(REV_STORE)
-	defer seqs.Close()
+	seqs := db.Sub(REV_STORE)
 
 	basepath := path + "::"
 	lenbase := len(basepath)

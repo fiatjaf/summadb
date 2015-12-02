@@ -2,9 +2,9 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/fiatjaf/sublevel"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -65,11 +65,11 @@ func (p prepared) prepare(kind kind, path string, val []byte) prepared {
 	return p
 }
 
-func (p prepared) commit(db *sublevel.AbstractLevel) (prepared, error) {
+func (p prepared) commit() (prepared, error) {
 	batch := db.NewBatch()
 
 	/* lastseq */
-	updateSeq := getUpdateSeq(db)
+	updateSeq := getUpdateSeq()
 
 	/* reseting */
 	if op, ok := p["RESET"]; ok {
