@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/fiatjaf/sublevel"
@@ -23,10 +24,11 @@ const (
 
 type prepared map[string]*op
 type op struct {
-	kind kind
-	val  []byte
-	rev  string
-	path string // this field is only used in RESET operations
+	kind       kind
+	val        []byte
+	currentrev string
+	rev        string
+	path       string // this field is only used in RESET operations
 }
 
 func (p prepared) reset(path string) prepared {
@@ -84,7 +86,7 @@ func (p prepared) commit() (prepared, error) {
 			batch.Put(DOC_STORE, bytepath, op.val)
 			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
 			updateSeq++
-			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
+			op.rev = bumpPathInBatch(batch, path, op.currentrev, updateSeq)
 
 		} else if op.kind == DELETE {
 			deleteChildrenForPathInBatch(db, batch, path, &updateSeq)
@@ -93,16 +95,16 @@ func (p prepared) commit() (prepared, error) {
 			batch.Delete(DOC_STORE, bytepath)
 			batch.Put(DOC_STORE, []byte(path+"/_deleted"), []byte(nil))
 			updateSeq++
-			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
+			op.rev = bumpPathInBatch(batch, path, op.currentrev, updateSeq)
 
 		} else if op.kind == UNDELETE {
 			batch.Delete(DOC_STORE, []byte(path+"/_deleted"))
 			updateSeq++
-			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
+			op.rev = bumpPathInBatch(batch, path, "", updateSeq)
 
 		} else if op.kind == NOTHING {
 			updateSeq++
-			op.rev = bumpPathInBatch(db, batch, path, updateSeq)
+			op.rev = bumpPathInBatch(batch, path, op.currentrev, updateSeq)
 		}
 
 		/* there's no need to bump parent revs here, since all the parents were already
@@ -158,24 +160,35 @@ func deleteChildrenForPathInBatch(
 		batch.Delete(DOC_STORE, []byte(subpath))
 		batch.Put(DOC_STORE, []byte(subpath+"/_deleted"), []byte(nil))
 		*updateSeq++
-		bumpPathInBatch(db, batch, subpath, *updateSeq)
+		bumpPathInBatch(batch, subpath, "", *updateSeq)
 	}
 
 	return nil
 }
 
 func bumpPathInBatch(
-	db *sublevel.AbstractLevel,
 	batch *sublevel.SuperBatch,
 	path string,
+	currentrev string,
 	newseq uint64,
 ) (newrev string) {
 	// bumping rev
-	docs := db.Sub(DOC_STORE)
-	oldrev := GetRev(docs, path)
-	newrev = NewRev(string(oldrev))
+	if currentrev == "" {
+		/* no rev was passed, we will fetch our current rev
+		   and bump accordingly */
+		if currentrev == "" {
+			currentrev = string(GetRev(path))
+		}
+		newrev = NewRev(currentrev)
+	} else {
+		/* a rev was passed. if we have no current revs in the
+		   database we will use it, otherwise we will ignore it. */
+		currentrevondb := string(GetRev(path))
+		if strings.HasPrefix(currentrevondb, "0-") {
+			newrev = currentrev
+		}
+	}
 	batch.Put(DOC_STORE, []byte(path+"/_rev"), []byte(newrev))
-
 	batch.Put(REV_STORE, []byte(path+"::"+newrev), []byte{})
 
 	// bumping seq

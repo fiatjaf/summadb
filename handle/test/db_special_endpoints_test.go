@@ -123,7 +123,9 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
                     {"everywhere": true},
                     {"_id": "car", "_rev": "`+rev+`", "space": false, "land": true},
                     {"_id": "airplane", "nowhere": false},
-                    {"_id": "_local/.abchtru", "replication+data": "k"}
+                    {"_id": "_local/.abchtru", "replication+data": "k"},
+                    {"_id": "empty-doc"},
+                    {"_id": "doc-with-a-rev-already-set", "_rev": "4-sa98hsa3i4", "val": 33}
                 ]
             }`)))
 			server.ServeHTTP(rec, r)
@@ -132,7 +134,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			var res []responses.BulkDocsResult
 			json.Unmarshal(rec.Body.Bytes(), &res)
 
-			Expect(res).To(HaveLen(4))
+			Expect(res).To(HaveLen(6))
 			Expect(res[0].Error).To(Equal(""))
 			Expect(res[0].Ok).To(Equal(true))
 			Expect(res[0].Rev).To(HavePrefix("1-"))
@@ -146,6 +148,11 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(res[2].Error).To(Equal(cfe.Error))
 			Expect(res[3].Id).To(Equal("_local/.abchtru"))
 			Expect(res[3].Ok).To(Equal(true))
+			Expect(res[4].Ok).To(Equal(true))
+			Expect(res[4].Rev).To(HavePrefix("1-"))
+			Expect(res[5].Ok).To(Equal(true))
+			// in couchdb this would be 5-xxx, but for now we don't need that:
+			Expect(res[5].Rev).To(HavePrefix("1-"))
 		})
 
 		g.It("should have the correct docs saved", func() {
@@ -158,7 +165,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			server.ServeHTTP(rec, r)
 			var res responses.AllDocs
 			json.Unmarshal(rec.Body.Bytes(), &res)
-			Expect(res.Rows).To(HaveLen(4))
+			Expect(res.Rows).To(HaveLen(6))
 		})
 
 		g.It("should return the _revs_diff", func() {

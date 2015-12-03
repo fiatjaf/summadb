@@ -129,7 +129,17 @@ func DeleteAt(path string) (newrev string, err error) {
 
 func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
 	txn := make(prepared)
+
+	/* deal with empty maps (could happen when a replicated PouchDB has a document with only
+	   _id and _rev but no other value) */
+	if len(tree) == 0 {
+		tree["_val"] = nil
+	}
+
+	// first we delete everything under this path
 	txn = txn.reset(path)
+
+	// then we proceed just like SaveTreeAt
 	txn, err = saveObjectAt(txn, path, tree)
 	if err != nil {
 		return "", err
@@ -158,13 +168,19 @@ func SaveTreeAt(path string, tree map[string]interface{}) (newrev string, err er
 
 func saveObjectAt(txn prepared, base string, o map[string]interface{}) (prepared, error) {
 	var err error
+	var revtoset string
+
 	for k, v := range o {
 		if len(k) > 0 && k[0] == '_' {
 			if k == "_val" {
 				/* actually set the value at this path */
 				txn = txn.prepare(SAVE, base, ToLevel(v))
 			}
-			/* skip secial values, i. e., those starting with "_" */
+			if k == "_rev" {
+				/* attempt to use this rev -- will fail if this path already exists in the db */
+				revtoset = v.(string)
+			}
+			/* skip other special values */
 			continue
 		}
 
@@ -199,5 +215,9 @@ func saveObjectAt(txn prepared, base string, o map[string]interface{}) (prepared
 			return nil, err
 		}
 	}
+
+	// apply the rev we get before (or, if we didn't get, doesn't matter)
+	txn[base].currentrev = revtoset
+
 	return txn, nil
 }

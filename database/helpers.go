@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/fiatjaf/sublevel"
 )
 
 func Random(bytes int) string {
@@ -26,8 +24,9 @@ func NewRev(oldrev string) string {
 	return fmt.Sprintf("%d-%s", (n + 1), Random(5))
 }
 
-func GetRev(db *sublevel.Sublevel, path string) []byte {
-	oldrev, err := db.Get([]byte(path+"/_rev"), nil)
+func GetRev(path string) []byte {
+	docs := db.Sub(DOC_STORE)
+	oldrev, err := docs.Get([]byte(path+"/_rev"), nil)
 	if err != nil {
 		oldrev = []byte("0-00000")
 	}

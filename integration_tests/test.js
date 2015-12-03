@@ -2,6 +2,7 @@ if (typeof window == 'undefined') {
   expect = require('chai').expect
   PouchDB = require('pouchdb')
   fetch = require('node-fetch')
+  Promise = require('lie')
 } else {
   expect = chai.expect
 }
@@ -14,20 +15,15 @@ const value = v => Object({_val: v})
 describe('integration', function () {
   this.timeout(40000)
 
-  before(() => {
+  before(() => { // cleaning up local db -- remote doesn't need to be cleared as it should
+                 // have been started out clear already.
     return Promise.resolve().then(() => {
-      return fetch(summa + '/docid').then(r => r.json())
-    }).then(function (doc) {
-      return fetch(summa + '/docid?rev=' + doc._rev, {method: 'DELETE'})
-    }).catch(() => {
-       // no need to remove
-    }).then(() => {
-      return new PouchDB("summadb-test")
+      return new PouchDB("pouch-test-db")
     }).then(db => {
       local = db
       return local.destroy()
     }).then(() => {
-      return new PouchDB("summadb-test")
+      return new PouchDB("pouch-test-db")
     }).then((db) => {
       local = db
     })
@@ -76,7 +72,11 @@ describe('integration', function () {
           fetch(summa + '/that').then(r => r.json()),
           fetch(summa + '/array').then(r => r.json()),
           fetch(summa + '/complex').then(r => r.json()),
-        ]).then((that, array, complex) => {
+        ]).then((vals) => {
+          var that = vals[0]
+            , array = vals[1]
+            , complex = vals[2]
+
           expect(that._id).to.equal('that')
           expect(that._rev).to.equal(revs[1])
           expect(array._id).to.equal('array')

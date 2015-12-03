@@ -214,6 +214,10 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	/* options */
+	// inewedits, _ := ctx.jsonBody["new_edits"]
+	// newedits := inewedits.(bool) // for now this is always true.
+
 	path := db.CleanPath(ctx.path)
 	docs := idocs.([]interface{})
 	res := make([]responses.BulkDocsResult, len(docs))
