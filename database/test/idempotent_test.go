@@ -1,19 +1,29 @@
 package db_test
 
 import (
+	"testing"
+
 	db "github.com/fiatjaf/summadb/database"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("idempotent put", func() {
-	Context("ReplaceTreeAt", func() {
-		It("should erase the db", func() {
-			Expect(db.Erase()).To(Succeed())
+func TestIdempotent(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
+
+	g.Describe("idempotent put", func() {
+		g.Before(func() {
+			db.Erase()
+			db.Start()
 		})
 
-		It("should put a tree", func() {
+		g.After(func() {
+			db.End()
+		})
+
+		g.It("should put a tree", func() {
 			Expect(db.ReplaceTreeAt("/fruits/banana", map[string]interface{}{
 				"colour":   "yellow",
 				"hardness": "low",
@@ -23,7 +33,7 @@ var _ = Describe("idempotent put", func() {
 			Expect(db.GetValueAt("/fruits/banana/colour")).To(BeEquivalentTo(`"yellow"`))
 		})
 
-		It("should replace it with a totally different object with arrays", func() {
+		g.It("should replace it with a totally different object with arrays", func() {
 			rev, err := db.ReplaceTreeAt("", map[string]interface{}{
 				"what":    "numbers",
 				"numbers": []interface{}{"zero", "one", "two", "three"},
@@ -46,7 +56,7 @@ var _ = Describe("idempotent put", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should replace it again with a totally different object", func() {
+		g.It("should replace it again with a totally different object", func() {
 			Expect(db.ReplaceTreeAt("/fruits/orange", map[string]interface{}{
 				"_val":   nil,
 				"colour": "orange",
@@ -68,4 +78,4 @@ var _ = Describe("idempotent put", func() {
 			}))
 		})
 	})
-})
+}

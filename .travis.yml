@@ -11,11 +11,15 @@ install:
   - go get 'github.com/golang/snappy'
   - go get 'github.com/gorilla/context'
   - go get 'github.com/gorilla/mux'
-  - go get 'github.com/onsi/ginkgo'
+  - go get 'github.com/franela/goblin'
+  - go get 'github.com/meatballhat/negroni-logrus'
+  - go get 'github.com/docopt/docopt-go'
+  - go get 'gopkg.in/tylerb/graceful.v1'
   - go get 'github.com/onsi/gomega'
   - go get 'github.com/rs/cors'
   - go get 'github.com/syndtr/goleveldb/leveldb'
   - go get 'github.com/Sirupsen/logrus'
-  - go install 'github.com/onsi/ginkgo/ginkgo'
   - export PATH=$PATH:$HOME/gopath/bin
-script: env ENVIRONMENT=production ginkgo -r
+env:
+  - ENVIRONMENT=production
+script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd -

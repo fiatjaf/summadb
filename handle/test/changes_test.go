@@ -4,25 +4,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	db "github.com/fiatjaf/summadb/database"
+	handle "github.com/fiatjaf/summadb/handle"
 	responses "github.com/fiatjaf/summadb/handle/responses"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("changes feed", func() {
-	Context("changes HTTP", func() {
-		var intermediary uint64
-		var last uint64
+func TestChanges(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
-		It("should erase the db and prepopulate", func() {
-			Expect(db.Erase()).To(Succeed())
+	g.Describe("changes feed", func() {
+		g.BeforeEach(func() {
+			rec = httptest.NewRecorder()
+			server = handle.BuildHTTPMux()
+		})
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
 			populateDB()
 		})
 
-		It("should return a list of changes for a sub db", func() {
+		g.After(func() {
+			db.End()
+		})
+
+		var intermediary uint64
+		var last uint64
+
+		g.It("should return a list of changes for a sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/_changes", nil)
 			server.ServeHTTP(rec, r)
 
@@ -35,7 +51,7 @@ var _ = Describe("changes feed", func() {
 			Expect(res.Results[2].Seq).To(Equal(res.LastSeq))
 		})
 
-		It("should return a list of changes for the global db", func() {
+		g.It("should return a list of changes for the global db", func() {
 			r, _ = http.NewRequest("GET", "/_changes", nil)
 			server.ServeHTTP(rec, r)
 
@@ -48,7 +64,7 @@ var _ = Describe("changes feed", func() {
 			Expect(res.Results[2].Seq).To(Equal(res.LastSeq))
 		})
 
-		It("should return a list of changes for another sub db", func() {
+		g.It("should return a list of changes for another sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/boat/_changes", nil)
 			server.ServeHTTP(rec, r)
 
@@ -64,7 +80,7 @@ var _ = Describe("changes feed", func() {
 			last = res.Results[2].Seq
 		})
 
-		It("should honour 'since'", func() {
+		g.It("should honour 'since'", func() {
 			r, _ = http.NewRequest("GET", fmt.Sprintf("/vehicles/boat/_changes?since=%d", intermediary), nil)
 			server.ServeHTTP(rec, r)
 
@@ -75,4 +91,4 @@ var _ = Describe("changes feed", func() {
 			Expect(res.Results[0].Seq).To(Equal(res.LastSeq))
 		})
 	})
-})
+}

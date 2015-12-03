@@ -5,6 +5,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/docopt/docopt-go"
 	"gopkg.in/tylerb/graceful.v1"
 
 	db "github.com/fiatjaf/summadb/database"
@@ -13,6 +14,18 @@ import (
 )
 
 func main() {
+	usage := `SummaDB ` + settings.VERSION + `
+
+Usage:
+  summadb reset
+  summadb
+    `
+	arguments, _ := docopt.Parse(usage, nil, true, settings.VERSION, false)
+	reset, _ := arguments["reset"]
+	if reset.(bool) {
+		db.Erase()
+	}
+
 	db.Start()
 
 	mux := handle.BuildHTTPMux()

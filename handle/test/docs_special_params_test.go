@@ -4,24 +4,40 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	db "github.com/fiatjaf/summadb/database"
+	handle "github.com/fiatjaf/summadb/handle"
 	responses "github.com/fiatjaf/summadb/handle/responses"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("docs special params", func() {
-	Context("revs related things, couchdb stuff", func() {
-		var rev string
+func TestCouchDBDocsSpecial(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
-		It("should erase the db and prepopulate", func() {
-			Expect(db.Erase()).To(Succeed())
+	g.Describe("couchdb documents special endpoints", func() {
+		g.BeforeEach(func() {
+			rec = httptest.NewRecorder()
+			server = handle.BuildHTTPMux()
+		})
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
 			populateDB()
 		})
 
-		It("should change some values to generate revs", func() {
+		g.After(func() {
+			db.End()
+		})
+
+		var rev string
+
+		g.It("should change some values to generate revs", func() {
 			brev, _ := db.GetValueAt("/vehicles/boat/air/_rev")
 			r, _ = http.NewRequest("PUT", "/vehicles/boat/air/_val", bytes.NewReader([]byte("true")))
 			r.Header.Add("If-Match", string(brev))
@@ -33,7 +49,7 @@ var _ = Describe("docs special params", func() {
 			rev = res.Rev
 		})
 
-		It("once more:", func() {
+		g.It("once more:", func() {
 			r, _ = http.NewRequest("PATCH", "/vehicles/boat/air", bytes.NewReader([]byte(`{
                 "_rev": "`+rev+`",
                 "really?": false
@@ -42,7 +58,7 @@ var _ = Describe("docs special params", func() {
 			Expect(rec.Code).To(Equal(200))
 		})
 
-		It("should fetch some key with the _revisions special field", func() {
+		g.It("should fetch some key with the _revisions special field", func() {
 			r, _ = http.NewRequest("GET", "/vehicles?revs=true", nil)
 			server.ServeHTTP(rec, r)
 
@@ -58,7 +74,7 @@ var _ = Describe("docs special params", func() {
 			Expect(ids).To(HaveLen(3))
 		})
 
-		It("should fetch some key with the _revs_info special field", func() {
+		g.It("should fetch some key with the _revs_info special field", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/boat?revs_info=true", nil)
 			server.ServeHTTP(rec, r)
 
@@ -78,4 +94,4 @@ var _ = Describe("docs special params", func() {
 			Expect(status).To(BeEquivalentTo("missing"))
 		})
 	})
-})
+}

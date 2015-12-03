@@ -40,9 +40,7 @@ func End() {
 }
 
 func Erase() error {
-	End()
 	dbfile := settings.DBFILE
 	err := os.RemoveAll(dbfile)
-	Start()
 	return err
 }

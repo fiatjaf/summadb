@@ -7,6 +7,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
+var VERSION = "0.1"
 var STARTTIME time.Time
 var DBFILE string
 var PORT string

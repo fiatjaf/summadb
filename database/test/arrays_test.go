@@ -1,19 +1,30 @@
 package db_test
 
 import (
+	"testing"
+
 	db "github.com/fiatjaf/summadb/database"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("basic operations", func() {
-	Context("array values", func() {
-		It("should erase the db", func() {
-			Expect(db.Erase()).To(Succeed())
+func TestArrays(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
+
+	g.Describe("array values", func() {
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
 		})
 
-		It("should save a tree with a simple array", func() {
+		g.After(func() {
+			db.End()
+		})
+
+		g.It("should save a tree with a simple array", func() {
 			rev, err := db.SaveTreeAt("", map[string]interface{}{
 				"numbers": []interface{}{"zero", "one", "two", "three"},
 			})
@@ -31,7 +42,7 @@ var _ = Describe("basic operations", func() {
 			}))
 		})
 
-		It("should save a tree with a complex array", func() {
+		g.It("should save a tree with a complex array", func() {
 			rev, err := db.SaveTreeAt("", map[string]interface{}{
 				"letters": []interface{}{
 					map[string]interface{}{
@@ -68,4 +79,4 @@ var _ = Describe("basic operations", func() {
 			}))
 		})
 	})
-})
+}

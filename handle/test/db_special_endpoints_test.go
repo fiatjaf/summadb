@@ -5,29 +5,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"sort"
 	"strconv"
 	"strings"
+	"testing"
 
 	db "github.com/fiatjaf/summadb/database"
+	handle "github.com/fiatjaf/summadb/handle"
 	responses "github.com/fiatjaf/summadb/handle/responses"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("db special endpoints", func() {
-	Context("couchdb stuff, mostly", func() {
+func TestCouchDBSpecialEndpoints(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
+
+	g.Describe("couchdb db special endpoints", func() {
+		g.BeforeEach(func() {
+			rec = httptest.NewRecorder()
+			server = handle.BuildHTTPMux()
+		})
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
+			populateDB()
+		})
+
+		g.After(func() {
+			db.End()
+		})
+
 		var rev string
 		var oldrev string
 		var id string
 
-		It("should erase the db and prepopulate", func() {
-			Expect(db.Erase()).To(Succeed())
-			populateDB()
-		})
-
-		It("should return _all_docs for a sub db", func() {
+		g.It("should return _all_docs for a sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/_all_docs", nil)
 			server.ServeHTTP(rec, r)
 
@@ -43,7 +59,7 @@ var _ = Describe("db special endpoints", func() {
 			Expect(keys).To(Equal([]string{"airplane", "boat", "car"}))
 		})
 
-		It("should return all_docs with include_docs for another sub db", func() {
+		g.It("should return all_docs with include_docs for another sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/airplane/_all_docs?include_docs=true", nil)
 			server.ServeHTTP(rec, r)
 
@@ -73,7 +89,7 @@ var _ = Describe("db special endpoints", func() {
 			Expect(res.Rows[0].Doc).To(HaveKeyWithValue("_id", res.Rows[0].Id))
 		})
 
-		It("should _bulk_get", func() {
+		g.It("should _bulk_get", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_bulk_get", bytes.NewReader([]byte(`{
                 "docs": [
                     {"id": "nonexisting-doc"},
@@ -101,7 +117,7 @@ var _ = Describe("db special endpoints", func() {
 			Expect(res.Results[0].Docs[0].Error).ToNot(BeNil())
 		})
 
-		It("should post docs with _bulk_docs", func() {
+		g.It("should post docs with _bulk_docs", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_bulk_docs", bytes.NewReader([]byte(`{
                 "docs": [
                     {"everywhere": true},
@@ -132,12 +148,12 @@ var _ = Describe("db special endpoints", func() {
 			Expect(res[3].Ok).To(Equal(true))
 		})
 
-		It("should have the correct docs saved", func() {
+		g.It("should have the correct docs saved", func() {
 			Expect(db.GetValueAt("/vehicles/" + id + "/everywhere")).To(BeEquivalentTo("true"))
 			Expect(db.GetValueAt("/vehicles/_local%2F.abchtru/replication%2Bdata")).To(BeEquivalentTo(`"k"`))
 		})
 
-		It("shouldn't show _local docs on _all_docs", func() {
+		g.It("shouldn't show _local docs on _all_docs", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/_all_docs", nil)
 			server.ServeHTTP(rec, r)
 			var res responses.AllDocs
@@ -145,7 +161,7 @@ var _ = Describe("db special endpoints", func() {
 			Expect(res.Rows).To(HaveLen(4))
 		})
 
-		It("should return the _revs_diff", func() {
+		g.It("should return the _revs_diff", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_revs_diff", bytes.NewReader([]byte(`{
                 "everywhere": ["2-invalidrev"],
                 "car": ["`+oldrev+`", "`+rev+`", "1-invalidrev"],
@@ -165,4 +181,4 @@ var _ = Describe("db special endpoints", func() {
 			Expect(airplane.Missing).To(Equal([]string{"1-nonexisting"}))
 		})
 	})
-})
+}

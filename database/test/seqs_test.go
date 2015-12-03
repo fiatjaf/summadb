@@ -1,14 +1,29 @@
 package db_test
 
 import (
+	"testing"
+
 	db "github.com/fiatjaf/summadb/database"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("seq", func() {
-	Context("seqs getting bumped", func() {
+func TestSeqs(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
+
+	g.Describe("seqs getting bumped", func() {
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
+		})
+
+		g.After(func() {
+			db.End()
+		})
+
 		/*
 		   we currently don't care a lot to the exact seqs here,
 		   we only care if the values are being increased and there
@@ -22,11 +37,7 @@ var _ = Describe("seq", func() {
 		   with the same number prefix).
 		*/
 
-		It("should erase the db", func() {
-			Expect(db.Erase()).To(Succeed())
-		})
-
-		It("should increase seqs when adding a new tree", func() {
+		g.It("should increase seqs when adding a new tree", func() {
 			db.SaveTreeAt("", map[string]interface{}{
 				"x": "oiwaeuriasburis",
 			})
@@ -35,14 +46,14 @@ var _ = Describe("seq", func() {
 			Expect(db.LastSeqAt("/x")).To(BeNumerically("==", uint64(0)))
 		})
 
-		It("should increase seqs when adding a new value", func() {
+		g.It("should increase seqs when adding a new value", func() {
 			db.SaveValueAt("/z", []byte("ihfiuewrhewoiruh"))
 			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(4))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(2)))
 			Expect(db.LastSeqAt("/x")).To(BeNumerically("==", uint64(0)))
 		})
 
-		It("should increase seqs when deleting a value", func() {
+		g.It("should increase seqs when deleting a value", func() {
 			db.DeleteAt("/x")
 			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(7))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(5)))
@@ -50,14 +61,14 @@ var _ = Describe("seq", func() {
 			Expect(db.LastSeqAt("/z")).To(BeNumerically("==", uint64(0)))
 		})
 
-		It("should increase seqs when undeleting a value", func() {
+		g.It("should increase seqs when undeleting a value", func() {
 			db.SaveValueAt("/x/xchild", []byte("skjfbslkfbskdf"))
 			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(10))
 			Expect(db.LastSeqAt("")).To(BeNumerically(">", uint64(7)))
 			Expect(db.LastSeqAt("/x")).To(BeNumerically(">", uint64(7)))
 		})
 
-		It("should increase seqs when making bizarre things", func() {
+		g.It("should increase seqs when making bizarre things", func() {
 			db.ReplaceTreeAt("/x", map[string]interface{}{
 				"xchild": nil,
 				"other":  "saldkasndlksad",
@@ -70,4 +81,4 @@ var _ = Describe("seq", func() {
 			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(22))
 		})
 	})
-})
+}
