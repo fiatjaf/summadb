@@ -124,6 +124,7 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 			row.Doc = doc.(map[string]interface{})
 			row.Doc["_id"] = id
 			row.Doc["_rev"] = rev
+			delete(row.Doc, "_val") // pouchdb doesn't like top-level keys starting with _
 		}
 		res.Rows = append(res.Rows, row)
 		res.TotalRows += 1
@@ -180,6 +181,7 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 
 		doc["_id"] = id
 		doc["_rev"] = rev
+		delete(doc, "_val") // pouchdb doesn't like top-level keys starting with _
 
 		if revs {
 			// magic method to fetch _revisions
