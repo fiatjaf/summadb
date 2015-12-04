@@ -28,7 +28,7 @@ func TestIdempotent(t *testing.T) {
 				"colour":   "yellow",
 				"hardness": "low",
 				"_val":     "a fruit.",
-			})).To(HavePrefix("1-"))
+			}, false)).To(HavePrefix("1-"))
 			Expect(db.GetValueAt("/fruits/banana")).To(BeEquivalentTo(`"a fruit."`))
 			Expect(db.GetValueAt("/fruits/banana/colour")).To(BeEquivalentTo(`"yellow"`))
 		})
@@ -37,13 +37,14 @@ func TestIdempotent(t *testing.T) {
 			rev, err := db.ReplaceTreeAt("", map[string]interface{}{
 				"what":    "numbers",
 				"numbers": []interface{}{"zero", "one", "two", "three"},
-			})
+			}, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(rev).To(HavePrefix("2-"))
 			Expect(db.GetValueAt("/numbers/3")).To(BeEquivalentTo(`"three"`))
 			_, err = db.GetValueAt("/numbers")
 			Expect(err).To(HaveOccurred())
 			Expect(db.GetTreeAt("")).To(Equal(map[string]interface{}{
+				"_val": nil,
 				"what": value("numbers"),
 				"numbers": map[string]interface{}{
 					"0": value("zero"),
@@ -60,8 +61,9 @@ func TestIdempotent(t *testing.T) {
 			Expect(db.ReplaceTreeAt("/fruits/orange", map[string]interface{}{
 				"_val":   nil,
 				"colour": "orange",
-			})).To(HavePrefix("1-"))
+			}, false)).To(HavePrefix("1-"))
 			Expect(db.GetTreeAt("")).To(Equal(map[string]interface{}{
+				"_val": nil,
 				"what": value("numbers"),
 				"numbers": map[string]interface{}{
 					"0": value("zero"),

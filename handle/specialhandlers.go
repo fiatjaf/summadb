@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -113,24 +114,16 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		specialKeys, err := db.GetSpecialKeysAt(path + "/" + id)
-		if err != nil {
-			log.Print("unknown error: ", err)
-			res := responses.UnknownError()
-			w.WriteHeader(res.Code)
-			json.NewEncoder(w).Encode(res)
-			return
-		}
-
+		rev := string(db.GetRev(path + "/" + db.EscapeKey(id)))
 		row := responses.Row{
 			Id:    id,
 			Key:   id,
-			Value: map[string]interface{}{"rev": specialKeys.Rev},
+			Value: map[string]interface{}{"rev": rev},
 		}
 		if include_docs {
 			row.Doc = doc.(map[string]interface{})
 			row.Doc["_id"] = id
-			row.Doc["_rev"] = specialKeys.Rev
+			row.Doc["_rev"] = rev
 		}
 		res.Rows = append(res.Rows, row)
 		res.TotalRows += 1
@@ -176,17 +169,17 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 		id := iid.(string)
 		res.Results[i].Id = id
 
-		path := db.CleanPath(ctx.path) + "/" + id
-		doc, err1 := db.GetTreeAt(path)
-		specialKeys, err2 := db.GetSpecialKeysAt(path)
-		if err1 != nil || err2 != nil {
+		path := db.CleanPath(ctx.path) + "/" + db.EscapeKey(id)
+		rev := string(db.GetRev(path))
+		doc, err := db.GetTreeAt(path)
+		if err != nil {
 			err := responses.NotFound()
 			res.Results[i].Docs[0].Error = &err
 			continue
 		}
 
 		doc["_id"] = id
-		doc["_rev"] = specialKeys.Rev
+		doc["_rev"] = rev
 
 		if revs {
 			// magic method to fetch _revisions
@@ -205,6 +198,10 @@ func BulkGet(w http.ResponseWriter, r *http.Request) {
 func BulkDocs(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
 	var idocs interface{}
+	var iid interface{}
+	var irev interface{}
+	var id string
+	var rev string
 	var ok bool
 
 	if idocs, ok = ctx.jsonBody["docs"]; !ok {
@@ -215,35 +212,46 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* options */
-	// inewedits, _ := ctx.jsonBody["new_edits"]
-	// newedits := inewedits.(bool) // for now this is always true.
+	new_edits := true
+	if inew_edits, ok := ctx.jsonBody["new_edits"]; ok {
+		new_edits = inew_edits.(bool)
+	}
 
 	path := db.CleanPath(ctx.path)
 	docs := idocs.([]interface{})
 	res := make([]responses.BulkDocsResult, len(docs))
-	for i, idoc := range docs {
-		doc := idoc.(map[string]interface{})
-		var iid interface{}
-		var id string
-		var irev interface{}
-		var rev string
-		if iid, ok = doc["_id"]; ok {
-			id = iid.(string)
-			if irev, ok = doc["_rev"]; ok {
-				rev = irev.(string)
-			}
-		} else {
-			id = db.Random(5)
-		}
-		delete(doc, "_rev")
-		delete(doc, "_id")
 
-		// check rev matching:
-		if iid != nil /* when iid is nil that means the doc had no _id, so we don't have to check. */ {
-			actualRev, err := db.GetValueAt(path + "/" + id + "/_rev")
-			/* err!=nil means there's no _rev, so ok */
-			if err == nil && string(actualRev) != rev {
-				e := responses.ConflictError()
+	if new_edits { /* procedure for normal document saving */
+		for i, idoc := range docs {
+			doc := idoc.(map[string]interface{})
+			if iid, ok = doc["_id"]; ok {
+				id = iid.(string)
+				if irev, ok = doc["_rev"]; ok {
+					rev = irev.(string)
+				}
+			} else {
+				id = db.Random(5)
+			}
+
+			// check rev matching:
+			if iid != nil /* when iid is nil that means the doc had no _id, so we don't have to check. */ {
+				currentRev := db.GetRev(path + "/" + db.EscapeKey(id))
+				if string(currentRev) != rev && !bytes.HasPrefix(currentRev, []byte{'0', '-'}) {
+					// rev is not matching, don't input this document
+					e := responses.ConflictError()
+					res[i] = responses.BulkDocsResult{
+						Id:     id,
+						Error:  e.Error,
+						Reason: e.Reason,
+					}
+					continue
+				}
+			}
+
+			// proceed to write the document.
+			newrev, err := db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc, false)
+			if err != nil {
+				e := responses.UnknownError()
 				res[i] = responses.BulkDocsResult{
 					Id:     id,
 					Error:  e.Error,
@@ -251,25 +259,64 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-		}
-
-		// proceed to write.
-		newrev, err := db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc)
-		if err != nil {
-			e := responses.UnknownError()
 			res[i] = responses.BulkDocsResult{
-				Id:     id,
-				Error:  e.Error,
-				Reason: e.Reason,
+				Id:  id,
+				Ok:  true,
+				Rev: newrev,
 			}
-			continue
 		}
-		res[i] = responses.BulkDocsResult{
-			Id:  id,
-			Ok:  true,
-			Rev: newrev,
+	} else { /* procedure for replication-type _bulk_docs (new_edits=false)*/
+		for i, idoc := range docs {
+			id = ""
+			rev = ""
+			doc := idoc.(map[string]interface{})
+			if iid, ok = doc["_id"]; ok {
+				id = iid.(string)
+				if irev, ok = doc["_rev"]; ok {
+					rev = irev.(string)
+				}
+			}
+			if id == "" || rev == "" {
+				e := responses.UnknownError()
+				res[i] = responses.BulkDocsResult{
+					Id:     id,
+					Error:  e.Error,
+					Reason: e.Reason,
+				}
+				continue
+			}
+
+			// proceed to write
+			currentRev := db.GetRev(path + "/" + db.EscapeKey(id))
+			var err error
+			if rev < string(currentRev) {
+				// will write only the rev if it is not the winning rev
+				db.AcknowledgeRevFor(path+"/"+db.EscapeKey(id), rev)
+
+			} else {
+				// otherwise will write the whole doc normally (replacing the current)
+				rev, err = db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc, true)
+			}
+
+			// handle write error
+			if err != nil {
+				e := responses.UnknownError()
+				res[i] = responses.BulkDocsResult{
+					Id:     id,
+					Error:  e.Error,
+					Reason: e.Reason,
+				}
+				continue
+			}
+
+			res[i] = responses.BulkDocsResult{
+				Id:  id,
+				Ok:  true,
+				Rev: rev,
+			}
 		}
 	}
+
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(res)
 }

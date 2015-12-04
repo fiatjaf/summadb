@@ -231,6 +231,7 @@ func TestBasics(t *testing.T) {
               "_id": "something",
               "_rev": "` + rev + `",
               "here": {
+                "_val": null,
                 "was": {
                   "before": {
                     "_val": "still another thing"

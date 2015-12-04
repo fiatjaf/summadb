@@ -107,6 +107,16 @@ func GetTreeAt(basepath string) (map[string]interface{}, error) {
 	return baseTree, nil
 }
 
+/*
+  this just saves the _rev on REV_STORE, it doesn't actually replace the valid document
+  (winning rev). it is meant for the replication process, when all missing revs are sent
+  and must be kept, but still only the biggest number wins, so we only have to keep it.
+*/
+func AcknowledgeRevFor(path string, rev string) error {
+	revs := db.Sub(REV_STORE)
+	return revs.Put([]byte(path+"::"+rev), []byte{}, nil)
+}
+
 func SaveValueAt(path string, bs []byte) (newrev string, err error) {
 	txn := make(prepared)
 	txn.prepare(SAVE, path, bs)
@@ -127,14 +137,17 @@ func DeleteAt(path string) (newrev string, err error) {
 	return txn[path].rev, nil
 }
 
-func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err error) {
+func ReplaceTreeAt(
+	path string,
+	tree map[string]interface{},
+	forcerev bool,
+) (newrev string, err error) {
 	txn := make(prepared)
 
-	/* deal with empty maps (could happen when a replicated PouchDB has a document with only
-	   _id and _rev but no other value) */
-	if len(tree) == 0 {
-		tree["_val"] = nil
-	}
+	/* put an empty _val on every doc that doesn't have a _val.
+	   required to  deal with empty maps (could happen when a
+	   replicated PouchDB has a document with only _id and _rev but no other value) */
+	tree["_val"], _ = tree["_val"]
 
 	// first we delete everything under this path
 	txn = txn.reset(path)
@@ -144,6 +157,10 @@ func ReplaceTreeAt(path string, tree map[string]interface{}) (newrev string, err
 	if err != nil {
 		return "", err
 	}
+
+	// forcing use of current rev as the actual rev (for new_edits)
+	txn[path].forcerev = forcerev
+
 	txn, err = txn.commit()
 	if err != nil {
 		return "", err
@@ -175,8 +192,12 @@ func saveObjectAt(txn prepared, base string, o map[string]interface{}) (prepared
 			if k == "_val" {
 				/* actually set the value at this path */
 				txn = txn.prepare(SAVE, base, ToLevel(v))
-			}
-			if k == "_rev" {
+			} else if k == "_id" {
+				/* if there are no other values in this map, there is _id, so we should add something */
+				if _, exists := txn[base]; !exists {
+					txn = txn.prepare(SAVE, base, nil)
+				}
+			} else if k == "_rev" {
 				/* attempt to use this rev -- will fail if this path already exists in the db */
 				revtoset = v.(string)
 			}

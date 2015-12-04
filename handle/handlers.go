@@ -206,7 +206,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody)
+		rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody, false)
 	} else {
 		err = errors.New("value received at " + ctx.path + " is not JSON: " + string(ctx.body))
 	}

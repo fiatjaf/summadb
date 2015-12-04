@@ -73,12 +73,12 @@ func TestSeqs(t *testing.T) {
 				"xchild": nil,
 				"other":  "saldkasndlksad",
 				"_val":   "askjdasnkdjasd",
-			})
+			}, false)
 			db.ReplaceTreeAt("/x/xchild", map[string]interface{}{
 				"ham":  "sadljkasndlksad",
 				"_val": "askjdasnkdjasd",
-			})
-			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(22))
+			}, false)
+			Expect(db.GlobalUpdateSeq()).To(BeEquivalentTo(19))
 		})
 	})
 }

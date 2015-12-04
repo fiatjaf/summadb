@@ -43,7 +43,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 		var oldrev string
 		var id string
 
-		g.It("should return _all_docs for a sub db", func() {
+		g.It("_all_docs for a sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/_all_docs", nil)
 			server.ServeHTTP(rec, r)
 
@@ -59,7 +59,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(keys).To(Equal([]string{"airplane", "boat", "car"}))
 		})
 
-		g.It("should return all_docs with include_docs for another sub db", func() {
+		g.It("all_docs with include_docs -- for another sub db", func() {
 			r, _ = http.NewRequest("GET", "/vehicles/airplane/_all_docs?include_docs=true", nil)
 			server.ServeHTTP(rec, r)
 
@@ -89,7 +89,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(res.Rows[0].Doc).To(HaveKeyWithValue("_id", res.Rows[0].Id))
 		})
 
-		g.It("should _bulk_get", func() {
+		g.It("_bulk_get", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_bulk_get", bytes.NewReader([]byte(`{
                 "docs": [
                     {"id": "nonexisting-doc"},
@@ -117,7 +117,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(res.Results[0].Docs[0].Error).ToNot(BeNil())
 		})
 
-		g.It("should post docs with _bulk_docs", func() {
+		g.It("_bulk_docs", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_bulk_docs", bytes.NewReader([]byte(`{
                 "docs": [
                     {"everywhere": true},
@@ -151,8 +151,33 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(res[4].Ok).To(Equal(true))
 			Expect(res[4].Rev).To(HavePrefix("1-"))
 			Expect(res[5].Ok).To(Equal(true))
-			// in couchdb this would be 5-xxx, but for now we don't need that:
-			Expect(res[5].Rev).To(HavePrefix("1-"))
+			Expect(res[5].Rev).To(HavePrefix("5-"))
+		})
+
+		g.It("_bulk_docs with new_edits=false", func() {
+			r, _ = http.NewRequest("POST", "/animals/_bulk_docs", bytes.NewReader([]byte(`{
+                "docs": [
+                    {"_id": "0", "_rev": "34-83fsop4", "name": "albatroz"},
+                    {"_id": "1", "_rev": "0-a0a0a0a0", "name": "puppy"},
+                    {"_id": "2"}
+                ],
+                "new_edits": false
+            }`)))
+			server.ServeHTTP(rec, r)
+
+			Expect(rec.Code).To(Equal(201))
+			var res []responses.BulkDocsResult
+			json.Unmarshal(rec.Body.Bytes(), &res)
+
+			Expect(res).To(HaveLen(3))
+			Expect(res[0].Ok).To(Equal(true))
+			Expect(res[1].Ok).To(Equal(true))
+			Expect(res[2].Ok).To(Equal(false))
+
+			Expect(db.GetRev("/animals/0")).To(BeEquivalentTo("34-83fsop4"))
+			Expect(db.GetRev("/animals/1")).ToNot(BeEquivalentTo("0-a0a0a0a0"))
+			Expect(db.GetValueAt("/animals/0/name")).To(BeEquivalentTo(`"albatroz"`))
+			Expect(db.GetValueAt("/animals/1/name")).To(BeEquivalentTo(`"dog"`))
 		})
 
 		g.It("should have the correct docs saved", func() {
@@ -168,7 +193,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(res.Rows).To(HaveLen(6))
 		})
 
-		g.It("should return the _revs_diff", func() {
+		g.It("_revs_diff", func() {
 			r, _ = http.NewRequest("POST", "/vehicles/_revs_diff", bytes.NewReader([]byte(`{
                 "everywhere": ["2-invalidrev"],
                 "car": ["`+oldrev+`", "`+rev+`", "1-invalidrev"],
