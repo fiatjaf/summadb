@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	DOC_STORE = "d"
-	REV_STORE = "r"
-	BY_SEQ    = "s"
+	DOC_STORE   = "d"
+	REV_STORE   = "r"
+	LOCAL_STORE = "l"
+	BY_SEQ      = "s"
 
 	UPDATE_SEQ_KEY = "_update_seq_key"
 )

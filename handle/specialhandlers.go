@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -223,22 +224,63 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 	docs := idocs.([]interface{})
 	res := make([]responses.BulkDocsResult, len(docs))
 
+	var err error
 	if new_edits { /* procedure for normal document saving */
 		for i, idoc := range docs {
+
+			var newrev string
+			localDoc := false
 			doc := idoc.(map[string]interface{})
 			if iid, ok = doc["_id"]; ok {
 				id = iid.(string)
+				if strings.HasPrefix(id, "_local/") {
+					localDoc = true
+				}
 				if irev, ok = doc["_rev"]; ok {
 					rev = irev.(string)
+				} else {
+					rev = ""
 				}
 			} else {
 				id = db.Random(5)
 			}
 
-			// check rev matching:
-			if iid != nil /* when iid is nil that means the doc had no _id, so we don't have to check. */ {
-				currentRev := db.GetRev(path + "/" + db.EscapeKey(id))
-				if string(currentRev) != rev && !bytes.HasPrefix(currentRev, []byte{'0', '-'}) {
+			if !localDoc {
+				// procedure for normal documents
+
+				// check rev matching:
+				if iid != nil /* when iid is nil that means the doc had no _id, so we don't have to check. */ {
+					currentRev := db.GetRev(path + "/" + db.EscapeKey(id))
+					if string(currentRev) != rev && !bytes.HasPrefix(currentRev, []byte{'0', '-'}) {
+						// rev is not matching, don't input this document
+						e := responses.ConflictError()
+						res[i] = responses.BulkDocsResult{
+							Id:     id,
+							Error:  e.Error,
+							Reason: e.Reason,
+						}
+						continue
+					}
+				}
+
+				// proceed to write the document.
+				newrev, err = db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc, false)
+				if err != nil {
+					e := responses.UnknownError()
+					res[i] = responses.BulkDocsResult{
+						Id:     id,
+						Error:  e.Error,
+						Reason: e.Reason,
+					}
+					continue
+				}
+
+			} else {
+				// procedure for local documents
+
+				// check rev matching:
+				currentRev := db.GetLocalDocRev(path + "/" + id)
+				if currentRev != "0-0" && currentRev != rev {
 					// rev is not matching, don't input this document
 					e := responses.ConflictError()
 					res[i] = responses.BulkDocsResult{
@@ -248,19 +290,20 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 					}
 					continue
 				}
+
+				// proceed to write the document.
+				newrev, err = db.SaveLocalDocAt(path+"/"+id, doc)
+				if err != nil {
+					e := responses.UnknownError()
+					res[i] = responses.BulkDocsResult{
+						Id:     id,
+						Error:  e.Error,
+						Reason: e.Reason,
+					}
+					continue
+				}
 			}
 
-			// proceed to write the document.
-			newrev, err := db.ReplaceTreeAt(path+"/"+db.EscapeKey(id), doc, false)
-			if err != nil {
-				e := responses.UnknownError()
-				res[i] = responses.BulkDocsResult{
-					Id:     id,
-					Error:  e.Error,
-					Reason: e.Reason,
-				}
-				continue
-			}
 			res[i] = responses.BulkDocsResult{
 				Id:  id,
 				Ok:  true,
@@ -290,7 +333,6 @@ func BulkDocs(w http.ResponseWriter, r *http.Request) {
 
 			// proceed to write
 			currentRev := db.GetRev(path + "/" + db.EscapeKey(id))
-			var err error
 			if rev < string(currentRev) {
 				// will write only the rev if it is not the winning rev
 				db.AcknowledgeRevFor(path+"/"+db.EscapeKey(id), rev)

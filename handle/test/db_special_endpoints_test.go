@@ -85,7 +85,6 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			}
 			Expect(docs).To(HaveKey("air"))
 			Expect(res.Rows[0].Doc).To(HaveKey("_rev"))
-			Expect(res.Rows[0].Doc).To(HaveKey("_val"))
 			Expect(res.Rows[0].Doc).To(HaveKeyWithValue("_id", res.Rows[0].Id))
 		})
 
@@ -182,7 +181,11 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 
 		g.It("should have the correct docs saved", func() {
 			Expect(db.GetValueAt("/vehicles/" + id + "/everywhere")).To(BeEquivalentTo("true"))
-			Expect(db.GetValueAt("/vehicles/_local%2F.abchtru/replication%2Bdata")).To(BeEquivalentTo(`"k"`))
+			Expect(db.GetLocalDocJsonAt("/vehicles/_local/.abchtru")).To(MatchJSON(`{
+                "_id": "_local/.abchtru",
+                "_rev": "0-1",
+                "replication+data": "k"
+            }`))
 		})
 
 		g.It("shouldn't show _local docs on _all_docs", func() {

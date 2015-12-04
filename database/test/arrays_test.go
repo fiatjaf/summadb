@@ -14,7 +14,6 @@ func TestArrays(t *testing.T) {
 	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
 	g.Describe("array values", func() {
-
 		g.Before(func() {
 			db.Erase()
 			db.Start()

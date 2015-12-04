@@ -41,12 +41,28 @@ func Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ctx.localDoc {
+		jsondoc, err := db.GetLocalDocJsonAt(ctx.path)
+		if err != nil {
+			// ctx.exists doesn't work for _local docs
+			res := responses.NotFound()
+			w.WriteHeader(res.Code)
+			json.NewEncoder(w).Encode(res)
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(jsondoc)
+		return
+	}
+
 	if ctx.wantsTree {
 		var tree map[string]interface{}
 		tree, err = db.GetTreeAt(ctx.path)
 		if err == nil {
 			tree["_id"] = ctx.lastKey
-			tree["_rev"] = ctx.actualRev
+			tree["_rev"] = ctx.currentRev
 
 			if flag(r, "revs") {
 				var revs []string
@@ -87,7 +103,7 @@ func Get(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		if ctx.lastKey == "_rev" {
-			response = []byte(ctx.actualRev)
+			response = []byte(ctx.currentRev)
 		} else {
 			response, err = db.GetValueAt(ctx.path)
 		}
@@ -179,10 +195,10 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var rev string
 
-	if ctx.exists && ctx.actualRev != ctx.providedRev {
+	if ctx.exists && ctx.currentRev != ctx.providedRev {
 		log.WithFields(log.Fields{
-			"given":  ctx.providedRev,
-			"actual": ctx.actualRev,
+			"given":   ctx.providedRev,
+			"current": ctx.currentRev,
 		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
@@ -206,7 +222,11 @@ func Put(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody, false)
+		if ctx.localDoc {
+			rev, err = db.SaveLocalDocAt(ctx.path, ctx.jsonBody)
+		} else {
+			rev, err = db.ReplaceTreeAt(ctx.path, ctx.jsonBody, false)
+		}
 	} else {
 		err = errors.New("value received at " + ctx.path + " is not JSON: " + string(ctx.body))
 	}
@@ -247,10 +267,10 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ctx.actualRev != ctx.providedRev {
+	if ctx.currentRev != ctx.providedRev {
 		log.WithFields(log.Fields{
-			"given":  ctx.providedRev,
-			"actual": ctx.actualRev,
+			"given":   ctx.providedRev,
+			"current": ctx.currentRev,
 		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
@@ -293,10 +313,10 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ctx.actualRev != "" && ctx.actualRev != ctx.providedRev {
+	if ctx.currentRev != "" && ctx.currentRev != ctx.providedRev {
 		log.WithFields(log.Fields{
-			"given":  ctx.providedRev,
-			"actual": ctx.actualRev,
+			"given":   ctx.providedRev,
+			"current": ctx.currentRev,
 		}).Debug("rev mismatch.")
 		res := responses.ConflictError()
 		w.WriteHeader(res.Code)
