@@ -5,57 +5,58 @@ if (typeof window == 'undefined') {
   pouchSumma = require('pouch-summa')
   fetch = require('node-fetch')
   Promise = require('lie')
+  fetch.Promise = Promise
 } else {
   expect = chai.expect
 }
 
 var local
-var summa = "http://spooner.alhur.es:5000/subdb"
+var summa = process.env.SUMMADB_ADDRESS
 
-const val = v => Object({_val: v})
+function val (v) { return Object({_val: v}) }
 
 describe('integration', function () {
   this.timeout(40000)
 
-  before(() => { // cleaning up local db -- remote doesn't need to be cleared as it should
+  before(function () { // cleaning up local db -- remote doesn't need to be cleared as it should
                  // have been started out clear already.
-    return Promise.resolve().then(() => {
+    return Promise.resolve().then(function () {
       return new PouchDB("pouch-test-db")
-    }).then(db => {
+    }).then(function (db) {
       local = db
       return local.destroy()
-    }).then(() => {
+    }).then(function () {
       return new PouchDB("pouch-test-db")
-    }).then((db) => {
+    }).then(function (db) {
       local = db
       local.transform(pouchSumma)
     })
   })
 
-  describe('basic crud', () => {
-    it('should add a doc', () => {
-      return Promise.resolve().then(() => {
+  describe('basic crud', function () {
+    it('should add a doc', function () {
+      return Promise.resolve().then(function () {
         return fetch(summa + '/docid', {method: 'PUT', body: JSON.stringify({what: 'a doc'})})
       })
     })
   })
 
-  describe('replication', () => {
-    it('should replicate from summa root to pouchdb', () => {
-      return Promise.resolve().then(() => {
+  describe('replication to pouchdb', function () {
+    it('should replicate from summa root to pouchdb', function () {
+      return Promise.resolve().then(function () {
         return PouchDB.replicate(summa, local)
-      }).then(() => {
+      }).then(function () {
         return local.get('docid')
-      }).then((doc) => {
+      }).then(function (doc) {
         expect(doc).to.have.all.keys(['_id', '_rev', 'what'])
         expect(doc.what).to.deep.equal('a doc')
       })
     })
 
-    it('should replicate from pouchdb to summa root', () => {
+    it('should replicate from pouchdb to summa root', function () {
       var revs = []
 
-      return Promise.resolve().then(()=> {
+      return Promise.resolve().then(function () {
         return local.bulkDocs([
           {_id: 'this', sub: 'this is a document'},
           {_id: 'that', sub: 'that is a document'},
@@ -67,15 +68,15 @@ describe('integration', function () {
             ]
           }, true, 5]}
         ])
-      }).then((res) => {
-        revs = res.map(r => r.rev)
+      }).then(function (res) {
+        revs = res.map(function (r) { return r.rev })
         return PouchDB.replicate(local, summa)
-      }).then(() => {
+      }).then(function () {
         return Promise.all([
-          fetch(summa + '/that').then(r => r.json()),
-          fetch(summa + '/array').then(r => r.json()),
-          fetch(summa + '/complex').then(r => r.json()),
-        ]).then((vals) => {
+          fetch(summa + '/that').then(function (r) { return r.json() }),
+          fetch(summa + '/array').then(function (r) { return r.json() }),
+          fetch(summa + '/complex').then(function (r) { return r.json() }),
+        ]).then(function (vals) {
           var that = vals[0]
             , array = vals[1]
             , complex = vals[2]
@@ -114,8 +115,8 @@ describe('integration', function () {
       })
     })
 
-    it('should mess up in both databases then sync', () => {
-      return Promise.resolve().then(() => {
+    it('should mess up in both databases then sync', function () {
+      return Promise.resolve().then(function () {
         return Promise.all([
           fetch(summa + '/_bulk_docs', {method: 'POST', body: JSON.stringify({
             docs: [
@@ -130,7 +131,7 @@ describe('integration', function () {
             'two': val(2),
           })})
         ])
-      }).then(() => {
+      }).then(function () {
         return Promise.all([
           local.bulkDocs([
             {_id: 'that', _rev: '2-zzzzzzwwwww', empty: false, val: 1000},
@@ -141,18 +142,18 @@ describe('integration', function () {
           ], {new_edits: false}),
           local.put({_id: 'otherdoc', what: 'nothing', s: {letter: 'b'}})
         ])
-      }).then(() => {
+      }).then(function () {
         return local.compact()
-      }).then(() => {
+      }).then(function () {
         return PouchDB.sync(local, summa)
-      }).then(() => {
+      }).then(function () {
         return local.allDocs({
           keys: ['docid', 'otherdoc', 'that', 'extra'],
           include_docs: true
         })
-      }).then((res) => {
+      }).then(function (res) {
         expect(res.rows).to.have.length(4)
-        var docs = res.rows.map(r => r.doc)
+        var docs = res.rows.map(function (r) { return r.doc })
         expect(docs[0]._rev).to.equal('4-zyz')
         expect(docs[0].what).to.equal('just a doc')
         expect(docs[1].what).to.equal('something')
