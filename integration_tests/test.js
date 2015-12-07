@@ -1,6 +1,8 @@
 if (typeof window == 'undefined') {
   expect = require('chai').expect
   PouchDB = require('pouchdb')
+  PouchDB.plugin(require('transform-pouch'))
+  pouchSumma = require('pouch-summa')
   fetch = require('node-fetch')
   Promise = require('lie')
 } else {
@@ -10,7 +12,7 @@ if (typeof window == 'undefined') {
 var local
 var summa = "http://spooner.alhur.es:5000/subdb"
 
-const value = v => Object({_val: v})
+const val = v => Object({_val: v})
 
 describe('integration', function () {
   this.timeout(40000)
@@ -26,6 +28,7 @@ describe('integration', function () {
       return new PouchDB("pouch-test-db")
     }).then((db) => {
       local = db
+      local.transform(pouchSumma)
     })
   })
 
@@ -45,7 +48,7 @@ describe('integration', function () {
         return local.get('docid')
       }).then((doc) => {
         expect(doc).to.have.all.keys(['_id', '_rev', 'what'])
-        expect(doc.what).to.deep.equal(value('a doc'))
+        expect(doc.what).to.deep.equal('a doc')
       })
     })
 
@@ -82,34 +85,86 @@ describe('integration', function () {
           expect(array._id).to.equal('array')
           expect(array._rev).to.equal(revs[2])
           expect(array.array).to.deep.equal({
-            '0': value(1),
-            '1': value(2),
-            '2': value(3),
-            '3': value(4),
-            '4': value(5),
+            '0': val(1),
+            '1': val(2),
+            '2': val(3),
+            '3': val(4),
+            '4': val(5),
           })
           expect(complex.array).to.deep.equal({
             '0': {
-              '0': value('a'),
+              '0': val('a'),
               '1': {
-                letter: value('a')
+                letter: val('a')
               }
             },
             '1': {
               subarray: {
-                '0': value(1),
-                '1': value(2),
+                '0': val(1),
+                '1': val(2),
                 '2': {
-                  '0': value('xxx')
+                  '0': val('xxx')
                 }
               }
             },
-            '2': value(true),
-            '3': value(5)
+            '2': val(true),
+            '3': val(5)
           })
         })
       })
     })
-  })
 
+    it('should mess up in both databases then sync', () => {
+      return Promise.resolve().then(() => {
+        return Promise.all([
+          fetch(summa + '/_bulk_docs', {method: 'POST', body: JSON.stringify({
+            docs: [
+              {_id: 'docid', what: 'a doc', val: 234, _rev: '2-auci39gh2'},
+              {_id: 'docid', what: 'a doc', val: 23, _rev: '3-xyxyxy'},
+              {_id: 'otherdoc', what: 'something', s: {letter: 'a'}, _rev: '3-xxssyxy'},
+              {_id: 'that', _rev: '2-zzzzzz', empty: true},
+            ], new_edits: false}
+          )}),
+          fetch(summa + '/extra/numbers', {method: 'PUT', body: JSON.stringify({
+            'one': val(1),
+            'two': val(2),
+          })})
+        ])
+      }).then(() => {
+        return Promise.all([
+          local.bulkDocs([
+            {_id: 'that', _rev: '2-zzzzzzwwwww', empty: false, val: 1000},
+            {_id: 'docid', what: 'only a doc', _rev: '4-aaaa'},
+            {_id: 'docid', what: 'so a doc', _rev: '2-bbbb'},
+            {_id: 'docid', what: 'just a doc', _rev: '4-zyz'},
+            {_id: 'docid', what: 'maybe a doc', _rev: '3-99999'},
+          ], {new_edits: false}),
+          local.put({_id: 'otherdoc', what: 'nothing', s: {letter: 'b'}})
+        ])
+      }).then(() => {
+        return local.compact()
+      }).then(() => {
+        return PouchDB.sync(local, summa)
+      }).then(() => {
+        return local.allDocs({
+          keys: ['docid', 'otherdoc', 'that', 'extra'],
+          include_docs: true
+        })
+      }).then((res) => {
+        expect(res.rows).to.have.length(4)
+        var docs = res.rows.map(r => r.doc)
+        expect(docs[0]._rev).to.equal('4-zyz')
+        expect(docs[0].what).to.equal('just a doc')
+        expect(docs[1].what).to.equal('something')
+        expect(docs[1].s.letter).to.equal('a')
+        expect(docs[1]._rev).to.equal('3-xxssyxy')
+        expect(docs[2]._rev).to.equal('2-zzzzzzwwwww')
+        expect(docs[2].empty).to.equal(false)
+        expect(docs[2].val).to.equal(1000)
+        expect(docs[3].numbers).to.deep.equal({one: 1, two: 2})
+        expect(Object.keys(docs[3])).to.have.length(3)
+        expect(docs[3]._rev).to.contain('1-')
+      })
+    })
+  })
 })

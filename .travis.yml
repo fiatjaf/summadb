@@ -22,4 +22,4 @@ install:
   - export PATH=$PATH:$HOME/gopath/bin
 env:
   - ENVIRONMENT=production
-script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd -
+script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd - && cd integration_tests && npm test

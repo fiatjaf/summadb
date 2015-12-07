@@ -44,7 +44,6 @@ func TestIdempotent(t *testing.T) {
 			_, err = db.GetValueAt("/numbers")
 			Expect(err).To(HaveOccurred())
 			Expect(db.GetTreeAt("")).To(Equal(map[string]interface{}{
-				"_val": nil,
 				"what": value("numbers"),
 				"numbers": map[string]interface{}{
 					"0": value("zero"),
@@ -59,11 +58,9 @@ func TestIdempotent(t *testing.T) {
 
 		g.It("should replace it again with a totally different object", func() {
 			Expect(db.ReplaceTreeAt("/fruits/orange", map[string]interface{}{
-				"_val":   nil,
 				"colour": "orange",
 			}, false)).To(HavePrefix("1-"))
 			Expect(db.GetTreeAt("")).To(Equal(map[string]interface{}{
-				"_val": nil,
 				"what": value("numbers"),
 				"numbers": map[string]interface{}{
 					"0": value("zero"),
@@ -73,11 +70,16 @@ func TestIdempotent(t *testing.T) {
 				},
 				"fruits": map[string]interface{}{
 					"orange": map[string]interface{}{
-						"_val":   nil,
 						"colour": value("orange"),
 					},
 				},
 			}))
+		})
+
+		g.It("should put an empty object", func() {
+			rev, err := db.ReplaceTreeAt("/fruits/watermellon", map[string]interface{}{}, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(rev).To(HavePrefix("1-"))
 		})
 	})
 }

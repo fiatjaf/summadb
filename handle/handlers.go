@@ -244,9 +244,10 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
 }
 
-/* Should accept PATCH requests with JSON objects:
-   - curl -X PATCH http://db/path -d '{"to": {"key": "some value"}}' -H 'content-type: application/json'
-There will not replace all values under /path, but only modify the values which the JSON object refers to.
+/*
+   should accept PATCH requests with JSON objects:
+   `curl -X PATCH http://db/path -d '{"to": {"key": "some value"}}' -H 'content-type: application/json'`
+   this will not replace all values under /path, but only modify the values which the JSON object refers to.
 */
 func Patch(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)

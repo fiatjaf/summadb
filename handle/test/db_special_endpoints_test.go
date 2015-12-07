@@ -193,7 +193,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			server.ServeHTTP(rec, r)
 			var res responses.AllDocs
 			json.Unmarshal(rec.Body.Bytes(), &res)
-			Expect(res.Rows).To(HaveLen(6))
+			Expect(res.Rows).To(HaveLen(5))
 		})
 
 		g.It("_revs_diff", func() {

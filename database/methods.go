@@ -144,11 +144,6 @@ func ReplaceTreeAt(
 ) (newrev string, err error) {
 	txn := make(prepared)
 
-	/* put an empty _val on every doc that doesn't have a _val.
-	   required to  deal with empty maps (could happen when a
-	   replicated PouchDB has a document with only _id and _rev but no other value) */
-	tree["_val"], _ = tree["_val"]
-
 	// first we delete everything under this path
 	txn = txn.reset(path)
 

@@ -18,7 +18,7 @@ const (
 	UNDELETE       kind = 4
 	NOTHING        kind = 0
 
-	RESET int = -1
+	RESET kind = -1
 )
 
 type prepared map[string]*op
@@ -33,9 +33,10 @@ type op struct {
 
 func (p prepared) reset(path string) prepared {
 	p["RESET"] = &op{
-		kind: -1,
+		kind: RESET,
 		path: path,
 	}
+	p[path] = &op{kind: NOTHING}
 	return p
 }
 

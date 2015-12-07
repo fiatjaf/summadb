@@ -8,7 +8,9 @@
     "lie": "^3.0.1",
     "mocha": "^2.3.4",
     "node-fetch": "^1.3.3",
-    "pouchdb": "^5.1.0"
+    "pouch-summa": "0.0.2",
+    "pouchdb": "^5.1.0",
+    "transform-pouch": "^1.0.2"
   },
   "scripts": {
     "test": "mocha"
@@ -18,7 +20,8 @@
     "url": "git+https://github.com/fiatjaf/summadb.git"
   },
   "keywords": [
-    "couchdb",
+    "summadb",
+    "summa",
     "pouchdb",
     "replication",
     "hierarchical"
