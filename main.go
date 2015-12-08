@@ -17,8 +17,7 @@ func main() {
 	usage := `SummaDB ` + settings.VERSION + `
 
 Usage:
-  summadb [--port=<port>|--db=<dbfile>]
-  summadb --reset [--port=<port>|--db=<dbfile>]
+  summadb [--reset] [--port=<port>] [--db=<dbfile>]
 
 Options:
   -h --help     Show this screen.

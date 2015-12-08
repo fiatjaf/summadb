@@ -12,6 +12,7 @@ if (typeof window == 'undefined') {
 
 var local
 var summa  = process.env.SUMMADB_ADDRESS || 'http://0.0.0.0:5000/subdb'
+var summa2 = process.env.SECOND_SUMMADB_ADDRESS || 'http://0.0.0.0:5001/subdb'
 
 function val (v) { return Object({_val: v}) }
 
@@ -165,6 +166,28 @@ describe('integration', function () {
         expect(docs[3].numbers).to.deep.equal({one: 1, two: 2})
         expect(Object.keys(docs[3])).to.have.length(3)
         expect(docs[3]._rev).to.contain('1-')
+      }).then(function () {
+        return fetch(summa).then(function (r) { return r.json() })
+      }).then(function (superdoc) {
+        expect(superdoc.docid).to.deep.equal({what: val('just a doc')})
+        expect(superdoc.otherdoc).to.deep.equal({what: val('something'), s: {letter: val('a')}})
+        expect(superdoc.that).to.deep.equal({empty: val(false), val: val(1000)})
+        expect(superdoc.extra).to.deep.equal({numbers: {one: val(1), two: val(2)}})
+      })
+    })
+  })
+
+  describe('replication between summas', function () {
+    it('should replicate the current summa to another', function () {
+      return Promise.resolve().then(function () {
+        return PouchDB.replicate(summa, summa2)
+      }).then(function () {
+        return fetch(summa2).then(function (r) { return r.json() })
+      }).then(function (superdoc) {
+        expect(superdoc.docid).to.deep.equal({what: val('just a doc')})
+        expect(superdoc.otherdoc).to.deep.equal({what: val('something'), s: {letter: val('a')}})
+        expect(superdoc.that).to.deep.equal({empty: val(false), val: val(1000)})
+        expect(superdoc.extra).to.deep.equal({numbers: {one: val(1), two: val(2)}})
       })
     })
   })
