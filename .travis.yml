@@ -27,5 +27,5 @@ install:
 env:
   - ENVIRONMENT=production SUMMADB_ADDRESS=http://0.0.0.0:5000/subdb
 before_script:
-  - start-stop-daemon --start reset --quiet --pidfile /tmp/summadb.pid --make-pidfile --background --startas $GOPATH/bin/summadb
+  - start-stop-daemon --start --quiet --pidfile /tmp/summadb.pid --make-pidfile --background --startas "$GOPATH/bin/summadb --reset"
 script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd - && cd integration_tests && npm test && cd -

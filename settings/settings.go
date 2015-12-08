@@ -9,21 +9,12 @@ import (
 
 var VERSION = "0.1"
 var STARTTIME time.Time
-var DBFILE string
-var PORT string
+var DBFILE string = "/tmp/summa.db"
+var PORT string = "5000"
 var CORS_ORIGINS string
 var LOGLEVEL string
 
 func init() {
-	DBFILE = os.Getenv("LEVELDB_PATH")
-	if DBFILE == "" {
-		DBFILE = "/tmp/summa.db"
-	}
-	PORT = os.Getenv("PORT")
-	if PORT == "" {
-		PORT = "5000"
-	}
-
 	if os.Getenv("DEBUG") == "false" {
 		log.SetLevel(log.InfoLevel)
 		LOGLEVEL = "info"
@@ -37,12 +28,4 @@ func init() {
 
 	CORS_ORIGINS = "*"
 	STARTTIME = time.Now()
-
-	log.WithFields(log.Fields{
-		"DBFILE":       DBFILE,
-		"PORT":         PORT,
-		"STARTTIME":    STARTTIME,
-		"CORS_ORIGINS": CORS_ORIGINS,
-		"LOGLEVEL":     LOGLEVEL,
-	}).Debug("coming up with settings for the database and server.")
 }

@@ -17,14 +17,33 @@ func main() {
 	usage := `SummaDB ` + settings.VERSION + `
 
 Usage:
-  summadb reset
-  summadb
+  summadb [--port=<port>|--db=<dbfile>]
+  summadb --reset [--port=<port>|--db=<dbfile>]
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+  --db=<dbfile> The path of the underlying LevelDB [default: /tmp/summa.db]
+  --port=<port> Choose the port in which the HTTP server will listen [default: 5000]
+  --reset       Before starting, erase all database contents and start from zero.
     `
 	arguments, _ := docopt.Parse(usage, nil, true, settings.VERSION, false)
-	reset, _ := arguments["reset"]
-	if reset.(bool) {
+	if reset, _ := arguments["--reset"]; reset != nil && reset.(bool) {
 		db.Erase()
 	}
+	if port, _ := arguments["--port"]; port != nil {
+		settings.PORT = port.(string)
+	}
+	if dbfile, _ := arguments["--db"]; dbfile != nil {
+		settings.DBFILE = dbfile.(string)
+	}
+
+	log.WithFields(log.Fields{
+		"DBFILE":       settings.DBFILE,
+		"PORT":         settings.PORT,
+		"CORS_ORIGINS": settings.CORS_ORIGINS,
+		"LOGLEVEL":     settings.LOGLEVEL,
+	}).Info("starting database server.")
 
 	db.Start()
 

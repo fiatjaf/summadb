@@ -11,7 +11,7 @@ if (typeof window == 'undefined') {
 }
 
 var local
-var summa = process.env.SUMMADB_ADDRESS
+var summa  = process.env.SUMMADB_ADDRESS || 'http://0.0.0.0:5000/subdb'
 
 function val (v) { return Object({_val: v}) }
 
