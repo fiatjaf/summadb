@@ -1,3 +1,4 @@
+var netloc = '0.0.0.0'
 if (typeof window == 'undefined') {
   expect = require('chai').expect
   PouchDB = require('pouchdb')
@@ -8,11 +9,13 @@ if (typeof window == 'undefined') {
   fetch.Promise = Promise
 } else {
   expect = chai.expect
+  process = {env: {}}
+  netloc = (/[?&]netloc=([^&#]*)/.exec(location.href) || [null, null]) [1] || '0.0.0.0'
 }
 
 var local
-var summa  = process.env.SUMMADB_ADDRESS || 'http://0.0.0.0:5000/subdb'
-var summa2 = process.env.SECOND_SUMMADB_ADDRESS || 'http://0.0.0.0:5001/subdb'
+var summa  = process.env.SUMMADB_ADDRESS || 'http://' + netloc + ':5000/subdb'
+var summa2 = process.env.SECOND_SUMMADB_ADDRESS || 'http://' + netloc + ':5001/subdb'
 
 function val (v) { return Object({_val: v}) }
 

@@ -27,6 +27,6 @@ install:
 env:
   - ENVIRONMENT=production SUMMADB_ADDRESS=http://0.0.0.0:5000/subdb SECOND_SUMMADB_ADDRESS=http://0.0.0.0:5001
 before_script:
-  - start-stop-daemon --start --quiet --pidfile /tmp/summa1.pid --make-pidfile --background --startas "$GOPATH/bin/summadb --reset --port 5000 -db /tmp/db1"
-  - start-stop-daemon --start --quiet --pidfile /tmp/summa2.pid --make-pidfile --background --startas "$GOPATH/bin/summadb --reset --port 5001 -db /tmp/db2"
+  - start-stop-daemon -S --pidfile /tmp/summa1.pid --make-pidfile --background --startas $GOPATH/bin/summadb -- --reset --port 5000 --db /tmp/db1
+  - start-stop-daemon -S --pidfile /tmp/summa2.pid --make-pidfile --background --startas $GOPATH/bin/summadb -- --reset --port 5001 --db /tmp/db2
 script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd - && cd integration_tests && npm test && cd -
