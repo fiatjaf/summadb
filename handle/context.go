@@ -182,15 +182,3 @@ func setCommonVariables(next http.Handler) http.Handler {
 		context.Clear(r) // clears after handling everything.
 	})
 }
-
-//func LoadDB(r *http.Request) *leveldb.DB {
-//	if val := context.Get(r, k); val != nil {
-//		return val.(*leveldb.DB)
-//	}
-//	return database.OpenDB()
-//}
-//
-//func StoreDB(r *http.Request, db *leveldb.DB) {
-//	context.Set(r, k, db)
-//	db.Close()
-//}

@@ -18,6 +18,7 @@ func BuildHTTPMux() *interpose.Middleware {
 	// middleware
 	middle := interpose.New()
 	middle.Use(setCommonVariables)
+	middle.Use(logRequest)
 	middle.Use(adaptors.FromNegroni(cors.New(cors.Options{
 		// CORS
 		AllowedOrigins:   []string{"*"},
