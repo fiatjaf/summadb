@@ -119,7 +119,7 @@ describe('integration', function () {
       })
     })
 
-    it('should mess up in both databases then sync', function () {
+    it('should mess up in both databases then compact pouch', function () {
       return Promise.resolve().then(function () {
         return Promise.all([
           fetch(summa + '/_bulk_docs', {method: 'POST', body: JSON.stringify({
@@ -148,8 +148,12 @@ describe('integration', function () {
         ])
       }).then(function () {
         return local.compact()
-      }).then(function () {
-        return PouchDB.sync(local, summa)
+      })
+    })
+
+    it('should replicate from summa to local', function () {
+      return Promise.resolve().then(function () {
+        return PouchDB.replicate(summa, local)
       }).then(function () {
         return local.allDocs({
           keys: ['docid', 'otherdoc', 'that', 'extra'],
@@ -169,6 +173,13 @@ describe('integration', function () {
         expect(docs[3].numbers).to.deep.equal({one: 1, two: 2})
         expect(Object.keys(docs[3])).to.have.length(3)
         expect(docs[3]._rev).to.contain('1-')
+      })
+    })
+
+    it('should replicate from local to summa', function () {
+      debug = true
+      return Promise.resolve().then(function () {
+        return PouchDB.replicate(local, summa)
       }).then(function () {
         return fetch(summa).then(function (r) { return r.json() })
       }).then(function (superdoc) {

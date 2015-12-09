@@ -27,9 +27,6 @@ Options:
   --reset       Before starting, erase all database contents and start from zero.
     `
 	arguments, _ := docopt.Parse(usage, nil, true, settings.VERSION, false)
-	if reset, _ := arguments["--reset"]; reset != nil && reset.(bool) {
-		db.Erase()
-	}
 	if port, _ := arguments["--port"]; port != nil {
 		settings.PORT = port.(string)
 	}
@@ -44,6 +41,9 @@ Options:
 		"LOGLEVEL":     settings.LOGLEVEL,
 	}).Info("starting database server.")
 
+	if reset, _ := arguments["--reset"]; reset != nil && reset.(bool) {
+		db.Erase()
+	}
 	db.Start()
 
 	mux := handle.BuildHTTPMux()
