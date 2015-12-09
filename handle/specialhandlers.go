@@ -88,6 +88,7 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 
 	/* options */
 	include_docs := flag(r, "include_docs")
+	jsonKeys := param(r, "keys")
 	// startkey := param(r, "startkey")
 	// endkey := param(r, "endkey")
 	// descending := flag(r, "descending")
@@ -110,25 +111,63 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 		Rows:      make([]responses.Row, 0),
 	}
 
-	for id, doc := range tree {
-		if id[0] == '_' {
-			continue
+	if jsonKeys != "" {
+		// in case "keys" was provided we can just pick the requested keys from our tree
+		var keys []string
+		err = json.Unmarshal([]byte(jsonKeys), &keys)
+		if err != nil {
+			res := responses.BadRequest()
+			w.WriteHeader(res.Code)
+			json.NewEncoder(w).Encode(res)
+			return
 		}
 
-		rev := string(db.GetRev(path + "/" + db.EscapeKey(id)))
-		row := responses.Row{
-			Id:    id,
-			Key:   id,
-			Value: map[string]interface{}{"rev": rev},
+		for _, id := range keys {
+			var doc interface{}
+			var ok bool
+			if doc, ok = tree[id]; !ok || strings.HasPrefix(id, "_") {
+				res.Rows = append(res.Rows, responses.Row{
+					Key:   id,
+					Error: (responses.NotFound()).Reason,
+				})
+			}
+			rev := string(db.GetRev(path + "/" + db.EscapeKey(id)))
+			row := responses.Row{
+				Id:    id,
+				Key:   id,
+				Value: map[string]interface{}{"rev": rev},
+			}
+			if include_docs {
+				row.Doc = doc.(map[string]interface{})
+				row.Doc["_id"] = id
+				row.Doc["_rev"] = rev
+				delete(row.Doc, "_val") // pouchdb doesn't like top-level keys starting with _
+			}
+			res.Rows = append(res.Rows, row)
+			res.TotalRows += 1
 		}
-		if include_docs {
-			row.Doc = doc.(map[string]interface{})
-			row.Doc["_id"] = id
-			row.Doc["_rev"] = rev
-			delete(row.Doc, "_val") // pouchdb doesn't like top-level keys starting with _
+	} else {
+		// otherwise iterate through the entire tree
+		for id, doc := range tree {
+			if strings.HasPrefix(id, "_") {
+				continue
+			}
+
+			rev := string(db.GetRev(path + "/" + db.EscapeKey(id)))
+			row := responses.Row{
+				Id:    id,
+				Key:   id,
+				Value: map[string]interface{}{"rev": rev},
+			}
+			if include_docs {
+				row.Doc = doc.(map[string]interface{})
+				row.Doc["_id"] = id
+				row.Doc["_rev"] = rev
+				delete(row.Doc, "_val") // pouchdb doesn't like top-level keys starting with _
+			}
+			res.Rows = append(res.Rows, row)
+			res.TotalRows += 1
 		}
-		res.Rows = append(res.Rows, row)
-		res.TotalRows += 1
 	}
 
 	w.Header().Add("Content-Type", "application/json")

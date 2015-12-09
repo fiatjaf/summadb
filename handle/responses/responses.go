@@ -1,8 +1,6 @@
 package responses
 
-import (
-	db "github.com/fiatjaf/summadb/database"
-)
+import db "github.com/fiatjaf/summadb/database"
 
 type Error struct {
 	Error  string `json:"error"`
@@ -54,6 +52,7 @@ type Row struct {
 	Key   string                 `json:"key"`
 	Value interface{}            `json:"value"`
 	Doc   map[string]interface{} `json:"doc"`
+	Error string                 `json:"error,omitempty"`
 }
 
 type BulkGet struct {

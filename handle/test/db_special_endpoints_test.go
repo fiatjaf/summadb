@@ -55,8 +55,19 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 			Expect(rev).To(HavePrefix("1-"))
 
 			keys := []string{res.Rows[0].Id, res.Rows[1].Key, res.Rows[2].Id}
-			sort.Strings(keys)
-			Expect(keys).To(Equal([]string{"airplane", "boat", "car"}))
+			Expect(keys).To(ConsistOf("airplane", "boat", "car"))
+		})
+
+		g.It("_all_docs with selected keys", func() {
+			r, _ = http.NewRequest("GET", "/vehicles/_all_docs?keys=%5B%22airplane%22,%22boat%22%5D", nil)
+			server.ServeHTTP(rec, r)
+
+			var res responses.AllDocs
+			json.Unmarshal(rec.Body.Bytes(), &res)
+			Expect(res.Rows).To(HaveLen(2))
+
+			keys := []string{res.Rows[0].Id, res.Rows[1].Key}
+			Expect(keys).To(ConsistOf("airplane", "boat"))
 		})
 
 		g.It("all_docs with include_docs -- for another sub db", func() {
