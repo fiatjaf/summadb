@@ -32,4 +32,5 @@ env:
 before_script:
   - start-stop-daemon -S --pidfile /tmp/summa1.pid --make-pidfile --background --startas $GOPATH/bin/summadb -- --reset --port 5000 --db /tmp/db1
   - start-stop-daemon -S --pidfile /tmp/summa2.pid --make-pidfile --background --startas $GOPATH/bin/summadb -- --reset --port 5001 --db /tmp/db2
+  - nodejs --version
 script: cd database/test/ && go test && cd - && cd handle/test/ && go test && cd - && cd integration_tests && npm test && cd -
