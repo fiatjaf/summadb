@@ -2,7 +2,7 @@ language: go
 go:
   - 1.3
   - tip
-sudo: required
+sudo: false
 install:
   - go get 'github.com/carbocation/interpose'
   - go get 'github.com/codegangsta/negroni'
@@ -23,6 +23,9 @@ install:
   - go get
   - export GOPATH=$HOME/gopath
   - export PATH=$PATH:$GOPATH/bin
+  - . $HOME/.nvm/nvm.sh
+  - nvm install 4.2
+  - nvm use 4.2
   - cd integration_tests/ && npm install && cd -
 env:
   - ENVIRONMENT=production SUMMADB_ADDRESS=http://0.0.0.0:5000/subdb SECOND_SUMMADB_ADDRESS=http://0.0.0.0:5001
