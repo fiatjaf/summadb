@@ -16,6 +16,7 @@ const (
 	REV_STORE   = "r"
 	LOCAL_STORE = "l"
 	BY_SEQ      = "s"
+	USER_STORE  = "u"
 
 	UPDATE_SEQ_KEY = "_update_seq_key"
 )
