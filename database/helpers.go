@@ -2,12 +2,30 @@ package database
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
 	"strconv"
 	"strings"
 )
+
+func FromLevel(bs []byte) interface{} {
+	var val interface{}
+	json.Unmarshal(bs, &val)
+	return val
+}
+
+func ToLevel(val interface{}) []byte {
+	var bs []byte
+	switch v := val.(type) {
+	case []byte:
+		bs, _ = json.Marshal(string(v))
+	default:
+		bs, _ = json.Marshal(v)
+	}
+	return bs
+}
 
 func Random(bytes int) string {
 	random := make([]byte, bytes)
