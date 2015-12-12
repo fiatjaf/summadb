@@ -3,6 +3,7 @@ package handle
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -73,15 +74,15 @@ func ReadSecurity(w http.ResponseWriter, r *http.Request) {
 // HTTP handler for writing security metadata
 func WriteSecurity(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
-	var err1 error
-	var err2 error
-
 	path := db.CleanPath(ctx.path)
-	if read, ok := ctx.jsonBody["_read"]; ok {
-		err1 = db.SetReadRuleAt(path, read.(string))
-	}
-	if write, ok := ctx.jsonBody["_write"]; ok {
-		err2 = db.SetWriteRuleAt(path, write.(string))
+
+	err := db.SetRulesAt(path, ctx.jsonBody)
+	if err != nil {
+		log.Print("unknown error: ", err)
+		res := responses.UnknownError()
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")

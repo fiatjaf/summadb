@@ -7,57 +7,58 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SetWriteRuleAt(path string, val string) error {
+func SetRulesAt(path string, security map[string]interface{}) error {
 	metastore := db.Sub(PATH_METADATA)
-	return metastore.Put([]byte(path+"/_write"), []byte(val), nil)
+	batch := metastore.NewBatch()
+
+	if iread, ok := security["_read"]; ok {
+		batch.Put([]byte(path+"/_read"), []byte(iread.(string)))
+	}
+	if iwrite, ok := security["_write"]; ok {
+		batch.Put([]byte(path+"/_write"), []byte(iwrite.(string)))
+	}
+	if iadmin, ok := security["_admin"]; ok {
+		batch.Put([]byte(path+"/_admin"), []byte(iadmin.(string)))
+	}
+
+	return metastore.Write(batch, nil)
 }
 
-func SetReadRuleAt(path string, val string) error {
-	metastore := db.Sub(PATH_METADATA)
-	return metastore.Put([]byte(path+"/_write"), []byte(val), nil)
-}
+func GetWriteRuleAt(path string) string { return getRuleAt(path, "write") }
+func GetReadRuleAt(path string) string  { return getRuleAt(path, "read") }
+func GetAdminRuleAt(path string) string { return getRuleAt(path, "admin") }
 
-func GetWriteRuleAt(path string) string {
+func getRuleAt(path string, kind string) string {
 	metastore := db.Sub(PATH_METADATA)
-	val, err := metastore.Get([]byte(path+"/_write"), nil)
+	val, err := metastore.Get([]byte(path+"/_"+kind), nil)
 	if err != nil {
 		return ""
 	}
 	return string(val)
 }
 
-func GetReadRuleAt(path string) string {
-	metastore := db.Sub(PATH_METADATA)
-	val, err := metastore.Get([]byte(path+"/_write"), nil)
-	if err != nil {
-		return ""
-	}
-	return string(val)
-}
+func WriteAllowedAt(path string, user string) bool { return operationAllowedAt(path, user, "write") }
+func ReadAllowedAt(path string, user string) bool  { return operationAllowedAt(path, user, "read") }
+func AdminAllowedAt(path string, user string) bool { return operationAllowedAt(path, user, "admin") }
 
-func ReadAllowedAt(path string, user string) bool {
+func operationAllowedAt(path string, user string, kind string) bool {
+	if user == "" {
+		return false
+	}
+
 	keys := SplitKeys(path)
-	for i := len(keys) - 1; i >= 1; i-- {
-		subpath := JoinKeys(keys[:i])
-		rule := GetReadRuleAt(subpath)
-
-		for _, name := range strings.Split(string(rule), ",") {
-			if name == user || name == "*" {
-				return true
-			}
+	for i := len(keys); i >= 1; i-- {
+		var subpath string
+		if len(keys[:i]) <= 1 {
+			subpath = "/"
+		} else {
+			subpath = JoinKeys(keys[:i])
 		}
-	}
-	return false
-}
+		rule := getRuleAt(subpath, kind)
 
-func WriteAllowedAt(path string, user string) bool {
-	keys := SplitKeys(path)
-	for i := len(keys) - 1; i >= 1; i-- {
-		subpath := JoinKeys(keys[:i])
-		rule := GetWriteRuleAt(subpath)
-
-		for _, name := range strings.Split(string(rule), ",") {
-			if name == user || name == "*" {
+		for _, nameInRule := range strings.Split(string(rule), ",") {
+			nameInRule = strings.TrimSpace(nameInRule)
+			if nameInRule == user || nameInRule == "*" {
 				return true
 			}
 		}
@@ -84,16 +85,20 @@ func ValidUser(name string, password string) bool {
 func SaveUser(name string, password string) error {
 	users := db.Sub(USER_STORE)
 
+	if name == "" {
+		return errors.New("empty user name.")
+	}
+
 	nameb := []byte(name)
 	passwordb := []byte(password)
 
 	// check if user exists
-	if _, err := users.Get(nameb, nil); err != nil {
+	if _, err := users.Get(nameb, nil); err == nil {
 		return errors.New("user already exists")
 	}
 
 	// generate password hash
-	hashedPassword, err := bcrypt.GenerateFromPassword(passwordb, 23)
+	hashedPassword, err := bcrypt.GenerateFromPassword(passwordb, 12)
 	if err != nil {
 		return err
 	}
