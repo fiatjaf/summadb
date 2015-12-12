@@ -9,9 +9,9 @@ type Error struct {
 }
 
 type Success struct {
-	Id  string `json:"id"`
 	Ok  bool   `json:"ok"`
-	Rev string `json:"rev"`
+	Id  string `json:"id,omitempty"`
+	Rev string `json:"rev,omitempty"`
 }
 
 type DatabaseInfo struct {
@@ -79,4 +79,10 @@ type BulkDocsResult struct {
 
 type RevsDiffResult struct {
 	Missing []string `json:"missing"`
+}
+
+type Security struct {
+	Read  string `json:"_read"`
+	Write string `json:"_write"`
+	Admin string `json:"_admin"`
 }

@@ -29,6 +29,9 @@ func Get(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if ctx.lastKey == "_missing_revs" {
 		return
+	} else if ctx.lastKey == "_security" {
+		ReadSecurity(w, r)
+		return
 	}
 
 	var response []byte
@@ -192,6 +195,12 @@ Other use of the "_val" key is to set a value to null strictly, because setting 
 */
 func Put(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
+
+	if ctx.lastKey == "_security" {
+		WriteSecurity(w, r)
+		return
+	}
+
 	var err error
 	var rev string
 

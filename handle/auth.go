@@ -55,3 +55,36 @@ func getUser(r *http.Request) string {
 	}
 	return ""
 }
+
+// HTTP handler for reading security metadata
+func ReadSecurity(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+
+	path := db.CleanPath(ctx.path)
+	res := responses.Security{
+		Read:  db.GetReadRuleAt(path),
+		Write: db.GetWriteRuleAt(path),
+	}
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(res)
+}
+
+// HTTP handler for writing security metadata
+func WriteSecurity(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+	var err1 error
+	var err2 error
+
+	path := db.CleanPath(ctx.path)
+	if read, ok := ctx.jsonBody["_read"]; ok {
+		err1 = db.SetReadRuleAt(path, read.(string))
+	}
+	if write, ok := ctx.jsonBody["_write"]; ok {
+		err2 = db.SetWriteRuleAt(path, write.(string))
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(res)
+}

@@ -2,32 +2,67 @@ package database
 
 import (
 	"errors"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type access string
-
-const (
-	READ_ACCESS  access = "READ"
-	WRITE_ACCESS        = "WRITE"
-	ADMIN_ACCESS        = "ADMIN"
-)
-
-func SetRuleAt(path string, kind access, val string) {
-
+func SetWriteRuleAt(path string, val string) error {
+	metastore := db.Sub(PATH_METADATA)
+	return metastore.Put([]byte(path+"/_write"), []byte(val), nil)
 }
 
-func GetRuleAt(path string, kind access) {
-
+func SetReadRuleAt(path string, val string) error {
+	metastore := db.Sub(PATH_METADATA)
+	return metastore.Put([]byte(path+"/_write"), []byte(val), nil)
 }
 
-func ReadAllowedAt(path string, user string, kind access) bool {
-
+func GetWriteRuleAt(path string) string {
+	metastore := db.Sub(PATH_METADATA)
+	val, err := metastore.Get([]byte(path+"/_write"), nil)
+	if err != nil {
+		return ""
+	}
+	return string(val)
 }
 
-func WriteAllowedAt(path string, user string, kind access) bool {
+func GetReadRuleAt(path string) string {
+	metastore := db.Sub(PATH_METADATA)
+	val, err := metastore.Get([]byte(path+"/_write"), nil)
+	if err != nil {
+		return ""
+	}
+	return string(val)
+}
 
+func ReadAllowedAt(path string, user string) bool {
+	keys := SplitKeys(path)
+	for i := len(keys) - 1; i >= 1; i-- {
+		subpath := JoinKeys(keys[:i])
+		rule := GetReadRuleAt(subpath)
+
+		for _, name := range strings.Split(string(rule), ",") {
+			if name == user || name == "*" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func WriteAllowedAt(path string, user string) bool {
+	keys := SplitKeys(path)
+	for i := len(keys) - 1; i >= 1; i-- {
+		subpath := JoinKeys(keys[:i])
+		rule := GetWriteRuleAt(subpath)
+
+		for _, name := range strings.Split(string(rule), ",") {
+			if name == user || name == "*" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 /* returns true if the given name/password combination is
