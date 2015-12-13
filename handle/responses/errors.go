@@ -8,6 +8,10 @@ func ConflictError() Error {
 	return Error{"conflict", "document update conflict", 409}
 }
 
+func Unauthorized() Error {
+	return Error{"unauthorized", "you are not authorized to access this db", 401}
+}
+
 func BadRequest(msgs ...string) Error {
 	msg := "bad request"
 	if len(msgs) > 0 {

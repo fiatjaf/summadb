@@ -20,6 +20,8 @@ func getContext(r *http.Request) common {
 }
 
 type common struct {
+	user string
+
 	body              []byte
 	jsonBody          map[string]interface{}
 	path              string
@@ -38,6 +40,8 @@ type common struct {
 
 func setCommonVariables(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUser(r)
+
 		/* when the path is in the format /nanana/nanana/_val
 		   we reply with the single value for that path, otherwise
 		   assume the whole tree is being requested. */
@@ -162,6 +166,8 @@ func setCommonVariables(next http.Handler) http.Handler {
 		}
 
 		context.Set(r, k, common{
+			user: user,
+
 			body:              body,
 			jsonBody:          jsonBody,
 			path:              path,

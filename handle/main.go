@@ -18,6 +18,7 @@ func BuildHTTPMux() *interpose.Middleware {
 	// middleware
 	middle := interpose.New()
 	middle.Use(setCommonVariables)
+	middle.Use(authMiddleware)
 	middle.Use(adaptors.FromNegroni(cors.New(cors.Options{
 		// CORS
 		AllowedOrigins:   []string{"*"},
@@ -31,6 +32,7 @@ func BuildHTTPMux() *interpose.Middleware {
 	middle.UseHandler(router)
 
 	// create, update, delete, view values
+	router.HandleFunc("/_users", CreateUser).Methods("POST")
 	router.HandleFunc("/{path:.*}", Get).Methods("GET")
 	router.HandleFunc("/{path:.*}", Put).Methods("PUT")
 	router.HandleFunc("/{path:.*}", Patch).Methods("PATCH")
