@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestUsersACL(t *testing.T) {
+func TestAuthUsersACL(t *testing.T) {
 	g := Goblin(t)
 	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
@@ -26,19 +26,16 @@ func TestUsersACL(t *testing.T) {
 		g.It("should start with a * permission on root", func() {
 			Expect(db.GetWriteRuleAt("/")).To(Equal("*"))
 			Expect(db.GetReadRuleAt("/")).To(Equal("*"))
-			Expect(db.GetAdminRuleAt("/")).To(Equal("*"))
+			Expect(db.GetAdminRuleAt("")).To(Equal("*")) // "/" should equal ""
 		})
 
 		g.It("which means everybody is allowed to do anything anywhere", func() {
 			Expect(db.WriteAllowedAt("/", "bob")).To(Equal(true))
 			Expect(db.ReadAllowedAt("/articles", "maria")).To(Equal(true))
 			Expect(db.AdminAllowedAt("/somewhere/down/on/the/path", "anyone")).To(Equal(true))
+			Expect(db.WriteAllowedAt("/x/r/e/ws/sd/f/t/r/e/d/g/y", "")).To(Equal(true))
 			Expect(db.ReadAllowedAt("/recipes", "anna")).To(Equal(true))
 			Expect(db.AdminAllowedAt("/", "bob")).To(Equal(true))
-		})
-
-		g.It("expect for the blank user, which can do nothing", func() {
-			Expect(db.WriteAllowedAt("/x/r/e/ws/sd/f/t/r/e/d/g/y", "")).To(Equal(false))
 		})
 
 		g.It("should modify permissions arbitrarily", func() {

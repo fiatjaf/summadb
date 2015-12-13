@@ -27,10 +27,10 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	} else if ctx.lastKey == "_all_docs" {
 		AllDocs(w, r)
 		return
-	} else if ctx.lastKey == "_missing_revs" {
-		return
 	} else if ctx.lastKey == "_security" {
 		ReadSecurity(w, r)
+		return
+	} else if ctx.lastKey == "_missing_revs" {
 		return
 	}
 
@@ -180,7 +180,7 @@ func Post(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(201)
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responses.Success{id, true, rev})
+	json.NewEncoder(w).Encode(responses.Success{true, id, rev})
 }
 
 /* requests with raw string bodies:
@@ -250,7 +250,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(201)
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
+	json.NewEncoder(w).Encode(responses.Success{true, ctx.lastKey, rev})
 }
 
 /*
@@ -301,7 +301,7 @@ func Patch(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
+	json.NewEncoder(w).Encode(responses.Success{true, ctx.lastKey, rev})
 }
 
 func Delete(w http.ResponseWriter, r *http.Request) {
@@ -345,5 +345,5 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responses.Success{ctx.lastKey, true, rev})
+	json.NewEncoder(w).Encode(responses.Success{true, ctx.lastKey, rev})
 }

@@ -8,6 +8,10 @@ import (
 )
 
 func SetRulesAt(path string, security map[string]interface{}) error {
+	if path == "/" {
+		path = ""
+	}
+
 	metastore := db.Sub(PATH_METADATA)
 	batch := metastore.NewBatch()
 
@@ -29,6 +33,10 @@ func GetReadRuleAt(path string) string  { return getRuleAt(path, "read") }
 func GetAdminRuleAt(path string) string { return getRuleAt(path, "admin") }
 
 func getRuleAt(path string, kind string) string {
+	if path == "/" {
+		path = ""
+	}
+
 	metastore := db.Sub(PATH_METADATA)
 	val, err := metastore.Get([]byte(path+"/_"+kind), nil)
 	if err != nil {
@@ -42,23 +50,19 @@ func ReadAllowedAt(path string, user string) bool  { return operationAllowedAt(p
 func AdminAllowedAt(path string, user string) bool { return operationAllowedAt(path, user, "admin") }
 
 func operationAllowedAt(path string, user string, kind string) bool {
-	if user == "" {
-		return false
+	if path == "/" {
+		path = ""
 	}
 
 	keys := SplitKeys(path)
 	for i := len(keys); i >= 1; i-- {
 		var subpath string
-		if len(keys[:i]) <= 1 {
-			subpath = "/"
-		} else {
-			subpath = JoinKeys(keys[:i])
-		}
-		rule := getRuleAt(subpath, kind)
+		subpath = JoinKeys(keys[:i])
+		rule := string(getRuleAt(subpath, kind))
 
-		for _, nameInRule := range strings.Split(string(rule), ",") {
+		for _, nameInRule := range strings.Split(rule, ",") {
 			nameInRule = strings.TrimSpace(nameInRule)
-			if nameInRule == user || nameInRule == "*" {
+			if nameInRule == "*" || (nameInRule == user && user != "") {
 				return true
 			}
 		}

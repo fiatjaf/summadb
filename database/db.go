@@ -41,7 +41,7 @@ func Start() {
 		})
 
 		// admin party
-		SetRulesAt("/", map[string]interface{}{
+		SetRulesAt("", map[string]interface{}{
 			"_read":  "*",
 			"_write": "*",
 			"_admin": "*",

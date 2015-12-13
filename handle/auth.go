@@ -14,16 +14,15 @@ import (
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := getContext(r)
-		user := getUser(r)
 
-		var ok bool
+		var allow bool
 		if r.Method[0] == 'P' { // PUT, POST, PATCH
-			ok = db.WriteAllowedAt(ctx.path, user)
+			allow = db.WriteAllowedAt(ctx.path, ctx.user)
 		} else { // otherwise
-			ok = db.ReadAllowedAt(ctx.path, user)
+			allow = db.ReadAllowedAt(ctx.path, ctx.user)
 		}
 
-		if !ok {
+		if !allow {
 			res := responses.Unauthorized()
 			w.WriteHeader(res.Code)
 			json.NewEncoder(w).Encode(res)
@@ -65,7 +64,9 @@ func ReadSecurity(w http.ResponseWriter, r *http.Request) {
 	res := responses.Security{
 		Read:  db.GetReadRuleAt(path),
 		Write: db.GetWriteRuleAt(path),
+		Admin: db.GetAdminRuleAt(path),
 	}
+
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(res)
@@ -76,6 +77,13 @@ func WriteSecurity(w http.ResponseWriter, r *http.Request) {
 	ctx := getContext(r)
 	path := db.CleanPath(ctx.path)
 
+	if !db.AdminAllowedAt(path, ctx.user) {
+		res := responses.Unauthorized()
+		w.WriteHeader(res.Code)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
 	err := db.SetRulesAt(path, ctx.jsonBody)
 	if err != nil {
 		log.Print("unknown error: ", err)
@@ -85,7 +93,34 @@ func WriteSecurity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	res := responses.Success{Ok: true}
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(200)
 	json.NewEncoder(w).Encode(res)
+}
+
+func CreateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+
+	if name, ok := ctx.jsonBody["name"]; ok {
+		if password, ok := ctx.jsonBody["password"]; ok {
+			err := db.SaveUser(name.(string), password.(string))
+			if err != nil {
+				log.Print("unknown error: ", err)
+				res := responses.UnknownError()
+				w.WriteHeader(res.Code)
+				json.NewEncoder(w).Encode(res)
+			} else {
+				res := responses.Success{Ok: true}
+				w.Header().Add("Content-Type", "application/json")
+				w.WriteHeader(201)
+				json.NewEncoder(w).Encode(res)
+			}
+		}
+	}
+
+	res := responses.BadRequest(`You must send a JSON body with "name" and "password".`)
+	w.WriteHeader(res.Code)
+	json.NewEncoder(w).Encode(res)
+	return
 }
