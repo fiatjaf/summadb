@@ -10,7 +10,7 @@ import (
 var VERSION = "0.1"
 var STARTTIME time.Time
 var DBFILE string = "/tmp/summa.db"
-var PORT string = "5000"
+var PORT string = "7896"
 var CORS_ORIGINS string
 var LOGLEVEL string
 

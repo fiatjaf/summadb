@@ -1,5 +1,7 @@
+/* eslint no-undef: "off", no-native-reassign: "off" */
+
 var netloc = '0.0.0.0'
-if (typeof window == 'undefined') {
+if (typeof window === 'undefined') {
   expect = require('chai').expect
   PouchDB = require('pouchdb')
   PouchDB.plugin(require('transform-pouch'))
@@ -10,12 +12,12 @@ if (typeof window == 'undefined') {
 } else {
   expect = chai.expect
   process = {env: {}}
-  netloc = (/[?&]netloc=([^&#]*)/.exec(location.href) || [null, null]) [1] || '0.0.0.0'
+  netloc = location.hostname
 }
 
 var local
-var summa  = process.env.SUMMADB_ADDRESS || 'http://' + netloc + ':5000/subdb'
-var summa2 = process.env.SECOND_SUMMADB_ADDRESS || 'http://' + netloc + ':5001/subdb'
+var summa = 'http://' + netloc + ':7896/subdb'
+var summa2 = 'http://' + netloc + ':7897/subdb'
 
 function val (v) { return Object({_val: v}) }
 
@@ -25,12 +27,12 @@ describe('integration', function () {
   before(function () { // cleaning up local db -- remote doesn't need to be cleared as it should
                  // have been started out clear already.
     return Promise.resolve().then(function () {
-      return new PouchDB("pouch-test-db")
+      return new PouchDB('pouch-test-db')
     }).then(function (db) {
       local = db
       return local.destroy()
     }).then(function () {
-      return new PouchDB("pouch-test-db")
+      return new PouchDB('pouch-test-db')
     }).then(function (db) {
       local = db
       local.transform(pouchSumma)
@@ -64,7 +66,7 @@ describe('integration', function () {
         return local.bulkDocs([
           {_id: 'this', sub: 'this is a document'},
           {_id: 'that', sub: 'that is a document'},
-          {_id: 'array', array: [1,2,3,4,5]},
+          {_id: 'array', array: [1, 2, 3, 4, 5]},
           {_id: 'complex', array: [
             ['a', {letter: 'a'}],
             {'subarray': [
@@ -79,11 +81,11 @@ describe('integration', function () {
         return Promise.all([
           fetch(summa + '/that').then(function (r) { return r.json() }),
           fetch(summa + '/array').then(function (r) { return r.json() }),
-          fetch(summa + '/complex').then(function (r) { return r.json() }),
+          fetch(summa + '/complex').then(function (r) { return r.json() })
         ]).then(function (vals) {
           var that = vals[0]
-            , array = vals[1]
-            , complex = vals[2]
+          var array = vals[1]
+          var complex = vals[2]
 
           expect(that._id).to.equal('that')
           expect(that._rev).to.equal(revs[1])
@@ -94,7 +96,7 @@ describe('integration', function () {
             '1': val(2),
             '2': val(3),
             '3': val(4),
-            '4': val(5),
+            '4': val(5)
           })
           expect(complex.array).to.deep.equal({
             '0': {
@@ -127,12 +129,12 @@ describe('integration', function () {
               {_id: 'docid', what: 'a doc', val: 234, _rev: '2-auci39gh2'},
               {_id: 'docid', what: 'a doc', val: 23, _rev: '3-xyxyxy'},
               {_id: 'otherdoc', what: 'something', s: {letter: 'a'}, _rev: '3-xxssyxy'},
-              {_id: 'that', _rev: '2-zzzzzz', empty: true},
+              {_id: 'that', _rev: '2-zzzzzz', empty: true}
             ], new_edits: false}
           )}),
           fetch(summa + '/extra/numbers', {method: 'PUT', body: JSON.stringify({
             'one': val(1),
-            'two': val(2),
+            'two': val(2)
           })})
         ])
       }).then(function () {
@@ -142,7 +144,7 @@ describe('integration', function () {
             {_id: 'docid', what: 'only a doc', _rev: '4-aaaa'},
             {_id: 'docid', what: 'so a doc', _rev: '2-bbbb'},
             {_id: 'docid', what: 'just a doc', _rev: '4-zyz'},
-            {_id: 'docid', what: 'maybe a doc', _rev: '3-99999'},
+            {_id: 'docid', what: 'maybe a doc', _rev: '3-99999'}
           ], {new_edits: false}),
           local.put({_id: 'otherdoc', what: 'nothing', s: {letter: 'b'}})
         ])
