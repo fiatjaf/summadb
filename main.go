@@ -46,12 +46,12 @@ Options:
 	}
 	db.Start()
 
-	mux := handle.BuildHTTPMux()
+	handler := handle.BuildHandler()
 	server := &graceful.Server{
 		Timeout: 2 * time.Second,
 		Server: &http.Server{
 			Addr:    ":" + settings.PORT,
-			Handler: mux,
+			Handler: handler,
 		},
 	}
 	stop := server.StopChan()

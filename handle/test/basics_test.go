@@ -23,7 +23,7 @@ func TestBasics(t *testing.T) {
 	g.Describe("basics", func() {
 		g.BeforeEach(func() {
 			rec = httptest.NewRecorder()
-			server = handle.BuildHTTPMux()
+			server = handle.BuildHandler()
 		})
 
 		g.Before(func() {
