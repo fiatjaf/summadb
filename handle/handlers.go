@@ -113,7 +113,6 @@ func Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Error("unknown error: ", err)
 		res := responses.UnknownError(err.Error())
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)

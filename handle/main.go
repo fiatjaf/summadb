@@ -3,12 +3,11 @@ package handle
 import (
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/carbocation/interpose/adaptors"
-	"github.com/fiatjaf/summadb/graphql"
-	"github.com/graphql-go/handler"
 	"github.com/justinas/alice"
 	"github.com/rs/cors"
+
+	graphql "github.com/fiatjaf/summadb/handle/graphql"
 )
 
 func BuildHandler() http.Handler {
@@ -24,12 +23,6 @@ func BuildHandler() http.Handler {
 		})),
 	)
 
-	// graphql endpoint
-	schema, err := graphql.MakeSchema()
-	if err != nil {
-		log.Warn("error creating graphql schema: ", err.Error())
-	}
-
 	// create, update, delete, view values
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -38,11 +31,8 @@ func BuildHandler() http.Handler {
 			if r.URL.Path == "/_users" {
 				chain.ThenFunc(CreateUser).ServeHTTP(w, r)
 			} else if r.URL.Path == "/_graphql" {
-				gql := handler.New(&handler.Config{
-					Schema: &schema,
-					Pretty: true,
-				})
-				gql.ServeHTTP(w, r)
+				// graphql endpoint
+				graphql.HandleFunc(w, r)
 			} else {
 				chain.ThenFunc(Post).ServeHTTP(w, r)
 			}
