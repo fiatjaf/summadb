@@ -2,6 +2,7 @@ package handle
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/carbocation/interpose/adaptors"
 	"github.com/justinas/alice"
@@ -30,7 +31,7 @@ func BuildHandler() http.Handler {
 		case "POST":
 			if r.URL.Path == "/_users" {
 				chain.ThenFunc(CreateUser).ServeHTTP(w, r)
-			} else if r.URL.Path == "/_graphql" {
+			} else if strings.HasSuffix(r.URL.Path, "/_graphql") {
 				alice.New(
 					corsMiddleware,
 				).ThenFunc(HandleGraphQL).ServeHTTP(w, r)

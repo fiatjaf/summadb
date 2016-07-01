@@ -131,5 +131,29 @@ func TestGraphQL(t *testing.T) {
             }`))
 			Expect(rec.Code).To(Equal(200))
 		})
+
+		g.It("graphql query on a subdb", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/_graphql", strings.NewReader(`query {
+              desc:_val
+              car { land, water }
+              airplane { land, air }
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": {
+                "desc": "things that move",
+                "car": {
+                  "land": true,
+                  "water": false
+                },
+                "airplane": {
+                  "land": true,
+                  "air": true
+                }
+              }
+            }`))
+			Expect(rec.Code).To(Equal(200))
+		})
 	})
 }

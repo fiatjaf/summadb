@@ -62,8 +62,10 @@ func HandleGraphQL(w http.ResponseWriter, r *http.Request) {
 	var response = make(map[string]interface{})
 	var errors []GraphQLError
 
+	startPath := r.URL.Path[:len(r.URL.Path)-9]
+
 	for _, field := range doc.Definitions[0].(*ast.OperationDefinition).SelectionSet.Selections {
-		err = godeep(field.(*ast.Field), "", response)
+		err = godeep(field.(*ast.Field), startPath, response)
 		if err != nil {
 			errors = append(errors, GraphQLError{err.Error()})
 		}
