@@ -6,21 +6,21 @@ import (
 	"github.com/carbocation/interpose/adaptors"
 	"github.com/justinas/alice"
 	"github.com/rs/cors"
-
-	graphql "github.com/fiatjaf/summadb/handle/graphql"
 )
+
+var corsMiddleware = adaptors.FromNegroni(cors.New(cors.Options{
+	AllowedOrigins:   []string{"*"},
+	AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+	AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
+	AllowCredentials: true,
+}))
 
 func BuildHandler() http.Handler {
 	// middleware for non-graphql endpoints
 	chain := alice.New(
 		setCommonVariables,
 		authMiddleware,
-		adaptors.FromNegroni(cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-			AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
-			AllowCredentials: true,
-		})),
+		corsMiddleware,
 	)
 
 	// create, update, delete, view values
@@ -31,8 +31,9 @@ func BuildHandler() http.Handler {
 			if r.URL.Path == "/_users" {
 				chain.ThenFunc(CreateUser).ServeHTTP(w, r)
 			} else if r.URL.Path == "/_graphql" {
-				// graphql endpoint
-				graphql.HandleFunc(w, r)
+				alice.New(
+					corsMiddleware,
+				).ThenFunc(HandleGraphQL).ServeHTTP(w, r)
 			} else {
 				chain.ThenFunc(Post).ServeHTTP(w, r)
 			}
