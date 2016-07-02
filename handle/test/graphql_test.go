@@ -156,4 +156,172 @@ func TestGraphQL(t *testing.T) {
 			Expect(rec.Code).To(Equal(200))
 		})
 	})
+
+	g.Describe("authorized and restricted graphql queries", func() {
+		g.BeforeEach(func() {
+			rec = httptest.NewRecorder()
+			server = handle.BuildHandler()
+		})
+
+		g.Before(func() {
+			db.Erase()
+			db.Start()
+			populateDB()
+		})
+
+		g.After(func() {
+			db.End()
+		})
+
+		g.It("should create some users and rules", func() {
+			r, _ = http.NewRequest("POST", "/_users", bytes.NewReader([]byte(`{
+				"name": "vehicles_user",
+				"password": "12345678"
+			}`)))
+			server.ServeHTTP(rec, r)
+			Expect(rec.Code).To(Equal(201))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("POST", "/_users", bytes.NewReader([]byte(`{
+				"name": "boat_user",
+				"password": "12345678"
+			}`)))
+			server.ServeHTTP(rec, r)
+			Expect(rec.Code).To(Equal(201))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("PUT", "/vehicles/_security", bytes.NewReader([]byte(`{
+				"_read": "vehicles_user"
+			}`)))
+			server.ServeHTTP(rec, r)
+			Expect(rec.Code).To(Equal(200))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("PUT", "/vehicles/boat/_security", bytes.NewReader([]byte(`{
+				"_read": "boat_user"
+			}`)))
+			server.ServeHTTP(rec, r)
+			Expect(rec.Code).To(Equal(200))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("PUT", "/_security", bytes.NewReader([]byte(`{
+				"_read": "no-one",
+				"_write": "no-one",
+				"_admin": "no-one"
+			}`)))
+			server.ServeHTTP(rec, r)
+			Expect(rec.Code).To(Equal(200))
+		})
+
+		g.It("should be authorized for the paths where the user has immediate access", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/_graphql", strings.NewReader(`query {
+              car { land, water }
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("vehicles_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": {
+                "car": {
+                  "land": true,
+                  "water": false
+                }
+              }
+            }`))
+			Expect(rec.Code).To(Equal(200))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("POST", "/vehicles/boat/_graphql", strings.NewReader(`query {
+              air
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("boat_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": {
+                "air": false
+              }
+            }`))
+			Expect(rec.Code).To(Equal(200))
+		})
+
+		g.It("should be authorized for all paths below", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/boat/_graphql", strings.NewReader(`query {
+              land
+              water
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("vehicles_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": {
+                "land": false,
+                "water": true
+              }
+            }`))
+			Expect(rec.Code).To(Equal(200))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("POST", "/vehicles/boat/air/_graphql", strings.NewReader(`query {
+              flies: _val
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("boat_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": {
+                "flies": false
+              }
+            }`))
+			Expect(rec.Code).To(Equal(200))
+		})
+
+		g.It("should be unauthorized for all paths above", func() {
+			r, _ = http.NewRequest("POST", "/_graphql", strings.NewReader(`query {
+              root: _val
+              vehicles {
+                car { land }
+              }
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("vehicles_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": null,
+              "errors": [{
+                "message": "_read permission for this path needed."
+              }]
+            }`))
+			rec = httptest.NewRecorder()
+
+			r, _ = http.NewRequest("POST", "/vehicles/_graphql", strings.NewReader(`query {
+              boat { land, air }
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("boat_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": null,
+              "errors": [{
+                "message": "_read permission for this path needed."
+              }]
+            }`))
+		})
+
+		g.It("should be unauthorized for neighbour paths also", func() {
+			r, _ = http.NewRequest("POST", "/vehicles/car/_graphql", strings.NewReader(`query {
+              land
+              water
+            }`))
+			r.Header.Set("Content-Type", "application/graphql")
+			r.SetBasicAuth("boat_user", "12345678")
+			server.ServeHTTP(rec, r)
+			Expect(rec.Body.String()).To(MatchJSON(`{
+              "data": null,
+              "errors": [{
+                "message": "_read permission for this path needed."
+              }]
+            }`))
+		})
+	})
 }

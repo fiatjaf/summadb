@@ -35,6 +35,8 @@ func BuildHandler() http.Handler {
 				chain.ThenFunc(CreateUser).ServeHTTP(w, r)
 			} else if strings.HasSuffix(r.URL.Path, "/_graphql") {
 				alice.New(
+					createContext,
+					setUserVariable,
 					corsMiddleware,
 				).ThenFunc(HandleGraphQL).ServeHTTP(w, r)
 			} else {

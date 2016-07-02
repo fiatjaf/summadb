@@ -12,6 +12,17 @@ import (
 )
 
 func HandleGraphQL(w http.ResponseWriter, r *http.Request) {
+	ctx := getContext(r)
+
+	startPath := r.URL.Path[:len(r.URL.Path)-9]
+	allow := db.ReadAllowedAt(startPath, ctx.user)
+	if !allow {
+		json.NewEncoder(w).Encode(GraphQLResponse{
+			Errors: []GraphQLError{GraphQLError{"_read permission for this path needed."}},
+		})
+		return
+	}
+
 	var gql string
 	switch r.Header.Get("Content-Type") {
 	case "application/json":
@@ -61,8 +72,6 @@ func HandleGraphQL(w http.ResponseWriter, r *http.Request) {
 	// we're just ignoring Args for now -- maybe we'll find an utility for them in the future
 	var response = make(map[string]interface{})
 	var errors []GraphQLError
-
-	startPath := r.URL.Path[:len(r.URL.Path)-9]
 
 	for _, field := range doc.Definitions[0].(*ast.OperationDefinition).SelectionSet.Selections {
 		err = godeep(field.(*ast.Field), startPath, response)

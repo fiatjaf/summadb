@@ -3,12 +3,11 @@ package handle
 import (
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 
 	db "github.com/fiatjaf/summadb/database"
-	"github.com/fiatjaf/summadb/handle/responses"
+	responses "github.com/fiatjaf/summadb/handle/responses"
 )
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -86,7 +85,6 @@ func WriteSecurity(w http.ResponseWriter, r *http.Request) {
 
 	err := db.SetRulesAt(path, ctx.jsonBody)
 	if err != nil {
-		log.Print("unknown error: ", err)
 		res := responses.UnknownError()
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
@@ -106,15 +104,16 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		if password, ok := ctx.jsonBody["password"]; ok {
 			err := db.SaveUser(name.(string), password.(string))
 			if err != nil {
-				log.Print("unknown error: ", err)
-				res := responses.UnknownError()
+				res := responses.UnknownError(err.Error())
 				w.WriteHeader(res.Code)
 				json.NewEncoder(w).Encode(res)
+				return
 			} else {
 				res := responses.Success{Ok: true}
 				w.Header().Add("Content-Type", "application/json")
 				w.WriteHeader(201)
 				json.NewEncoder(w).Encode(res)
+				return
 			}
 		}
 	}
@@ -122,5 +121,4 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	res := responses.BadRequest(`You must send a JSON body with "name" and "password".`)
 	w.WriteHeader(res.Code)
 	json.NewEncoder(w).Encode(res)
-	return
 }

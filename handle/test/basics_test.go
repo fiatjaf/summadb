@@ -3,7 +3,6 @@ package handle_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -172,7 +171,6 @@ func TestBasics(t *testing.T) {
 		})
 
 		g.It("should delete a path providing the correct rev", func() {
-			log.Print("sending rev ", rev)
 			r, _ = http.NewRequest("DELETE", "/something/here?rev="+rev, nil)
 			server.ServeHTTP(rec, r)
 			Expect(rec.Code).To(Equal(200))
