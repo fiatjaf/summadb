@@ -19,7 +19,9 @@ var corsMiddleware = adaptors.FromNegroni(cors.New(cors.Options{
 func BuildHandler() http.Handler {
 	// middleware for non-graphql endpoints
 	chain := alice.New(
+		createContext,
 		setCommonVariables,
+		setUserVariable,
 		authMiddleware,
 		corsMiddleware,
 	)
