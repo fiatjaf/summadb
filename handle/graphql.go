@@ -7,6 +7,7 @@ import (
 
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
+	"github.com/streamrail/concurrent-map"
 
 	db "github.com/fiatjaf/summadb/database"
 )
@@ -70,25 +71,19 @@ func HandleGraphQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// we're just ignoring Args for now -- maybe we'll find an utility for them in the future
-	var response = make(map[string]interface{})
-	var errors []GraphQLError
+	topfields := doc.Definitions[0].(*ast.OperationDefinition).SelectionSet.Selections
+	response := cmap.New()
 
-	for _, field := range doc.Definitions[0].(*ast.OperationDefinition).SelectionSet.Selections {
-		err = godeep(field.(*ast.Field), startPath, response)
-		if err != nil {
-			errors = append(errors, GraphQLError{err.Error()})
-		}
-	}
+	godeepAsyncMultiple(topfields, startPath, &response)
 
 	w.WriteHeader(200)
 	w.Header().Add("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(GraphQLResponse{
-		Data:   response,
-		Errors: errors,
+		Data: response.Items(),
 	})
 }
 
-func godeep(field *ast.Field, path string, base map[string]interface{}) (err error) {
+func godeep(field *ast.Field, path string, base *cmap.ConcurrentMap) {
 	alias := field.Name.Value
 	if field.Alias != nil {
 		alias = field.Alias.Value
@@ -102,25 +97,36 @@ func godeep(field *ast.Field, path string, base map[string]interface{}) (err err
 		} else {
 			val, _ = db.GetValueAt(path + "/" + field.Name.Value)
 		}
-		base[alias] = db.FromLevel(val)
-		return nil
+		base.Set(alias, db.FromLevel(val))
 	} else {
 		// will continue with the following selections
-		next := make(map[string]interface{})
-		base[alias] = next
-		for _, nextSel := range field.SelectionSet.Selections {
-			nextField := nextSel.(*ast.Field)
-			err = godeep(nextField, path+"/"+field.Name.Value, next)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		next := cmap.New()
+		base.Set(alias, next)
+		godeepAsyncMultiple(
+			field.SelectionSet.Selections,
+			path+"/"+field.Name.Value,
+			&next,
+		)
+	}
+}
+
+func godeepAsyncMultiple(selections []ast.Selection, nextPath string, next *cmap.ConcurrentMap) {
+	nfields := len(selections)
+	wait := make(chan int, nfields)
+
+	for _, nextSel := range selections {
+		nextField := nextSel.(*ast.Field)
+		godeep(nextField, nextPath, next)
+		wait <- 1
+	}
+
+	for i := 0; i < nfields; i++ {
+		<-wait
 	}
 }
 
 type GraphQLResponse struct {
-	Data   map[string]interface{} `json:"data"`
+	Data   map[string]interface{} `json:"data,omitempty"`
 	Errors []GraphQLError         `json:"errors,omitempty"`
 }
 

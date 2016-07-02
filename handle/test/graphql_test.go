@@ -287,7 +287,6 @@ func TestGraphQL(t *testing.T) {
 			r.SetBasicAuth("vehicles_user", "12345678")
 			server.ServeHTTP(rec, r)
 			Expect(rec.Body.String()).To(MatchJSON(`{
-              "data": null,
               "errors": [{
                 "message": "_read permission for this path needed."
               }]
@@ -301,7 +300,6 @@ func TestGraphQL(t *testing.T) {
 			r.SetBasicAuth("boat_user", "12345678")
 			server.ServeHTTP(rec, r)
 			Expect(rec.Body.String()).To(MatchJSON(`{
-              "data": null,
               "errors": [{
                 "message": "_read permission for this path needed."
               }]
@@ -317,7 +315,6 @@ func TestGraphQL(t *testing.T) {
 			r.SetBasicAuth("boat_user", "12345678")
 			server.ServeHTTP(rec, r)
 			Expect(rec.Body.String()).To(MatchJSON(`{
-              "data": null,
               "errors": [{
                 "message": "_read permission for this path needed."
               }]
