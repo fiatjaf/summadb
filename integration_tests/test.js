@@ -8,9 +8,12 @@ if (typeof window === 'undefined') {
   pouchSumma = require('pouch-summa')
   fetch = require('node-fetch')
   Promise = require('lie')
+  apolloClient = require('apollo-client')
+  gql = require('graphql-tag')
   fetch.Promise = Promise
 } else {
   expect = chai.expect
+  gql = graphqlTag
   process = {env: {}}
   netloc = location.hostname
 }
@@ -204,6 +207,30 @@ describe('integration', function () {
         expect(superdoc.otherdoc).to.deep.equal({what: val('something'), s: {letter: val('a')}})
         expect(superdoc.that).to.deep.equal({empty: val(false), val: val(1000)})
         expect(superdoc.extra).to.deep.equal({numbers: {one: val(1), two: val(2)}})
+      })
+    })
+  })
+
+  describe('graphql queries with apollo client', function () {
+    var ApolloClient = apolloClient.default
+    var network = apolloClient.createNetworkInterface(summa + '/_graphql')
+    var client = new ApolloClient({networkInterface: network})
+
+    it('should do a basic query', function () {
+      return client.query({query: gql`
+query {
+  docid { what }
+  extra {
+    numbers { one, two }
+  }
+}
+      `}).then(function (res) {
+        expect(res.data).to.deep.equal({
+          docid: { what: 'just a doc' },
+          extra: {
+            numbers: { one: 1, two: 2 }
+          }
+        })
       })
     })
   })
