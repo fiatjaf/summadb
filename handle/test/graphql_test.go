@@ -325,3 +325,29 @@ func TestGraphQL(t *testing.T) {
 		})
 	})
 }
+
+func BenchmarkGraphQLQuery(b *testing.B) {
+	rec = httptest.NewRecorder()
+	server = handle.BuildHandler()
+
+	db.Erase()
+	db.Start()
+	populateDB()
+
+	for i := 0; i < b.N; i++ {
+		/* BENCHMARK CODE */
+		r, _ = http.NewRequest("POST", "/_graphql", bytes.NewReader([]byte(`query {
+              root:_val
+              vehicles {
+                desc:_val
+                car { land, water }
+                airplane { land, air }
+              }
+            }`)))
+		r.Header.Set("Content-Type", "application/graphql")
+		server.ServeHTTP(rec, r)
+		/* END BENCHMARK CODE */
+	}
+
+	db.End()
+}

@@ -9,7 +9,7 @@ import (
 
 	db "github.com/fiatjaf/summadb/database"
 	handle "github.com/fiatjaf/summadb/handle"
-	"github.com/fiatjaf/summadb/handle/responses"
+	responses "github.com/fiatjaf/summadb/handle/responses"
 
 	. "github.com/franela/goblin"
 	. "github.com/onsi/gomega"
