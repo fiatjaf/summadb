@@ -1,27 +1,25 @@
 # SummaDB [![Travis-CI build status](https://travis-ci.org/fiatjaf/summadb.svg)](https://travis-ci.org/fiatjaf/summadb)
 
-SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical database** with infinitely nested sub-databases that **sync with PouchDB**. It is useful for backing offline-first applications with interesting calculations on server-side, users with hierarchical access to data working from a client-side app and live listeners.
+SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical database** with infinitely nested sub-databases, all those independently **syncable with PouchDB**. It offers a full-blown REST interface similar to CouchDB (with PUT calls that can be pointed to any leaf of the hierarchical tree and a PATCH method for multiple arbitrary leaf updates).
 
 ## Features
 
-* Simple HTTP API
-* Syncs with [PouchDB](http://pouchdb.com/)
-* Supports fine-grained document updates with PATCH
-* Every document is also a database
-* Changes feeds at each hierarchy level
-* User accounts for REST access
-* ACLs with read, write and admin access at each hierarchy level
-
-## Features planned
-
-* CouchDB-like [map functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
-* Full-featured websocket server compatible with [socket-pouch](https://github.com/nolanlawson/socket-pouch)
-* Changes feed published continuously through
-  * long-polling
-  * websockets
-  * webhooks
-* [JWT](http://jwt.io/) sessions
-* Security
-  * Users tied to each sub database, instead of only at root
-  * User roles
-  * Functions determining access at runtime
+  - [x] Simple, CouchDB-like, HTTP API
+  - [x] [PouchDB](http://pouchdb.com/) syncing
+  - [x] Supports fine-grained document updates with PATCH
+  - [x] Every document is also a database
+  - [ ] GraphQL read queries
+  - [ ] CouchDB-like [map functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
+  - [ ] Changes feed at each hierarchy level
+    - [x] Static
+    - [ ] Published continuously through
+      - [ ] long-polling
+      - [ ] websockets
+      - [ ] webhooks
+  - [ ] Users
+    - [x] User accounts for REST access
+    - [x] Basic HTTP Auth
+    - [x] ACLs with read, write and admin access at each hierarchy level
+    - [x] Users tied to each sub database, instead of only at root
+    - [ ] [JWT](http://jwt.io/) sessions
+  - [ ] Websocket server compatible with [socket-pouch](https://github.com/nolanlawson/socket-pouch)
