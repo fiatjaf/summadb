@@ -26,7 +26,7 @@ func TestCouchDBSpecialEndpoints(t *testing.T) {
 	g.Describe("couchdb db special endpoints", func() {
 		g.BeforeEach(func() {
 			rec = httptest.NewRecorder()
-			server = handle.BuildHTTPMux()
+			server = handle.BuildHandler()
 		})
 
 		g.Before(func() {

@@ -6,13 +6,11 @@ import (
 	"net/http/httptest"
 	"regexp"
 
-	"github.com/carbocation/interpose"
-
 	db "github.com/fiatjaf/summadb/database"
 )
 
 var r *http.Request
-var server *interpose.Middleware
+var server http.Handler
 var rec *httptest.ResponseRecorder
 
 func value(v interface{}) map[string]interface{} {

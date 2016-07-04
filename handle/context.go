@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
 
 	db "github.com/fiatjaf/summadb/database"
@@ -15,18 +14,16 @@ import (
 
 const k int = iota
 
-func getContext(r *http.Request) common {
-	return context.Get(r, k).(common)
+func getContext(r *http.Request) Context {
+	return context.Get(r, k).(Context)
 }
 
-type common struct {
+type Context struct {
 	user string
 
 	body              []byte
 	jsonBody          map[string]interface{}
 	path              string
-	pathKeys          []string
-	nkeys             int
 	lastKey           string
 	wantsTree         bool
 	localDoc          bool
@@ -38,29 +35,38 @@ type common struct {
 	providedRev string
 }
 
+func createContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		context.Set(r, k, Context{})
+		next.ServeHTTP(w, r)
+		context.Clear(r) // clears after handling everything.
+	})
+}
+
 func setCommonVariables(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := getUser(r)
+		ctx := getContext(r)
 
 		/* when the path is in the format /nanana/nanana/_val
 		   we reply with the single value for that path, otherwise
 		   assume the whole tree is being requested. */
-		path := r.URL.Path
-		wantsTree := true
-		localDoc := false
-		wantsDatabaseInfo := false
-		entityPath := path
-		pathKeys := db.SplitKeys(path)
+		ctx.path = r.URL.Path
+		ctx.wantsTree = true
+		ctx.localDoc = false
+		ctx.wantsDatabaseInfo = false
+
+		entityPath := ctx.path
+		pathKeys := db.SplitKeys(ctx.path)
 		nkeys := len(pathKeys)
-		lastKey := pathKeys[nkeys-1]
+		ctx.lastKey = pathKeys[nkeys-1]
 
 		if nkeys > 1 && pathKeys[nkeys-2] == "_local" {
 			// workaround for couchdb-like _local/blablabla docs
 			// we use a different sublevel for local docs so we must
 			// acknowledge that somehow.
-			lastKey = db.UnescapeKey(db.JoinKeys(pathKeys[nkeys-2:]))
-			localDoc = true
-		} else if lastKey == "" {
+			ctx.lastKey = db.UnescapeKey(db.JoinKeys(pathKeys[nkeys-2:]))
+			ctx.localDoc = true
+		} else if ctx.lastKey == "" {
 			// this means the request was made with an ending slash (for example:
 			// https://my.summadb.com/path/to/here/), so it wants couchdb-like information
 			// for the referred sub-database, and not the document at the referred path.
@@ -68,64 +74,61 @@ func setCommonVariables(next http.Handler) http.Handler {
 			// made without the trailing slash (or with a special header, for the root document
 			// and other scenarios in which the user does not have control over the presence
 			// of the ending slash).
-			wantsDatabaseInfo = true
+			ctx.wantsDatabaseInfo = true
 
-			if path == "/" {
-				path = ""
-				lastKey = ""
+			if ctx.path == "/" {
+				ctx.path = ""
+				ctx.lastKey = ""
 				entityPath = ""
 			}
 		} else {
-			if lastKey[0] == '_' {
-				wantsTree = false
+			if ctx.lastKey[0] == '_' {
+				ctx.wantsTree = false
 				entityPath = db.JoinKeys(pathKeys[:nkeys-1])
-				if lastKey == "_val" {
-					path = db.JoinKeys(pathKeys[:nkeys-1])
-					lastKey = pathKeys[nkeys-1]
+				if ctx.lastKey == "_val" {
+					ctx.path = db.JoinKeys(pathKeys[:nkeys-1])
+					ctx.lastKey = pathKeys[nkeys-1]
 				}
 			}
 		}
 
-		currentRev := ""
-		deleted := false
+		ctx.currentRev = ""
+		ctx.deleted = false
 		qrev := r.URL.Query().Get("rev")
 		hrev := r.Header.Get("If-Match")
 		drev := ""
-		providedRev := hrev // will be "" if there's no header rev
+		ctx.providedRev = hrev // will be "" if there's no header rev
 
 		// fetching current rev
-		if !localDoc {
+		if !ctx.localDoc {
 			// procedure for normal documents
 
 			specialKeys, err := db.GetSpecialKeysAt(entityPath)
 			if err == nil {
-				currentRev = specialKeys.Rev
-				deleted = specialKeys.Deleted
+				ctx.currentRev = specialKeys.Rev
+				ctx.deleted = specialKeys.Deleted
 			}
 
 		} else {
 			// procedure for local documents
-			currentRev = db.GetLocalDocRev(path)
+			ctx.currentRev = db.GetLocalDocRev(ctx.path)
 		}
 
-		var jsonBody map[string]interface{}
-		var body []byte
 		// body parsing
 		if r.Method[0] == 'P' { // PUT, PATCH, POST
 			/* filter body size */
-			body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+			b, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+			ctx.body = b
 			if err != nil {
-				log.Error("couldn't read request body: ", err)
 				res := responses.BadRequest("request body too large")
 				w.WriteHeader(res.Code)
 				json.NewEncoder(w).Encode(res)
 				return
 			}
 
-			if lastKey != "_val" {
-				err = json.Unmarshal(body, &jsonBody)
+			if ctx.lastKey != "_val" {
+				err = json.Unmarshal(ctx.body, &ctx.jsonBody)
 				if err != nil {
-					log.Error("invalid JSON sent as JSON: ", err, " || ", string(body))
 					res := responses.BadRequest("invalid JSON sent as JSON")
 					w.WriteHeader(res.Code)
 					json.NewEncoder(w).Encode(res)
@@ -139,11 +142,11 @@ func setCommonVariables(next http.Handler) http.Handler {
 			if hrev != "" && qrev != hrev {
 				revfail = true
 			} else {
-				providedRev = qrev
+				ctx.providedRev = qrev
 			}
 		}
 		drev = ""
-		if drevi, ok := jsonBody["_rev"]; ok {
+		if drevi, ok := ctx.jsonBody["_rev"]; ok {
 			drev = drevi.(string)
 		}
 		if drev != "" {
@@ -154,7 +157,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 			} else if qrev != "" && hrev != "" && qrev != hrev {
 				revfail = true
 			} else {
-				providedRev = drev
+				ctx.providedRev = drev
 			}
 		}
 
@@ -165,26 +168,18 @@ func setCommonVariables(next http.Handler) http.Handler {
 			return
 		}
 
-		context.Set(r, k, common{
-			user: user,
-
-			body:              body,
-			jsonBody:          jsonBody,
-			path:              path,
-			pathKeys:          pathKeys,
-			nkeys:             nkeys,
-			lastKey:           lastKey,
-			wantsTree:         wantsTree,
-			localDoc:          localDoc,
-			wantsDatabaseInfo: wantsDatabaseInfo,
-
-			currentRev:  currentRev,
-			deleted:     deleted,
-			exists:      currentRev != "" && !deleted,
-			providedRev: providedRev,
-		})
+		ctx.exists = ctx.currentRev != "" && !ctx.deleted
+		context.Set(r, k, ctx)
 
 		next.ServeHTTP(w, r)
-		context.Clear(r) // clears after handling everything.
+	})
+}
+
+func setUserVariable(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := getContext(r)
+		ctx.user = getUser(r)
+		context.Set(r, k, ctx)
+		next.ServeHTTP(w, r)
 	})
 }

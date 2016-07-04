@@ -1,43 +1,57 @@
 package handle
 
 import (
-	"github.com/carbocation/interpose"
+	"net/http"
+	"strings"
+
 	"github.com/carbocation/interpose/adaptors"
-	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
 	"github.com/rs/cors"
 )
 
-func BuildHTTPMux() *interpose.Middleware {
-	//log.WithFields(log.Fields{
-	//	"DBFILE":       settings.DBFILE,
-	//	"PORT":         settings.PORT,
-	//	"CORS_ORIGINS": settings.CORS_ORIGINS,
-	//	"STARTTIME":    settings.STARTTIME,
-	//}).Info("starting database server.")
+var corsMiddleware = adaptors.FromNegroni(cors.New(cors.Options{
+	AllowedOrigins:   []string{"*"},
+	AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+	AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
+	AllowCredentials: true,
+}))
 
-	// middleware
-	middle := interpose.New()
-	middle.Use(setCommonVariables)
-	middle.Use(authMiddleware)
-	middle.Use(adaptors.FromNegroni(cors.New(cors.Options{
-		// CORS
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
-		AllowCredentials: true,
-	})))
-
-	// router
-	router := mux.NewRouter()
-	middle.UseHandler(router)
+func BuildHandler() http.Handler {
+	// middleware for non-graphql endpoints
+	chain := alice.New(
+		createContext,
+		setCommonVariables,
+		setUserVariable,
+		authMiddleware,
+		corsMiddleware,
+	)
 
 	// create, update, delete, view values
-	router.HandleFunc("/_users", CreateUser).Methods("POST")
-	router.HandleFunc("/{path:.*}", Get).Methods("GET")
-	router.HandleFunc("/{path:.*}", Put).Methods("PUT")
-	router.HandleFunc("/{path:.*}", Patch).Methods("PATCH")
-	router.HandleFunc("/{path:.*}", Delete).Methods("DELETE")
-	router.HandleFunc("/{path:.*}", Post).Methods("POST")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			if r.URL.Path == "/_users" {
+				chain.ThenFunc(CreateUser).ServeHTTP(w, r)
+			} else if strings.HasSuffix(r.URL.Path, "/_graphql") {
+				alice.New(
+					createContext,
+					setUserVariable,
+					corsMiddleware,
+				).ThenFunc(HandleGraphQL).ServeHTTP(w, r)
+			} else {
+				chain.ThenFunc(Post).ServeHTTP(w, r)
+			}
+		case "GET":
+			chain.ThenFunc(Get).ServeHTTP(w, r)
+		case "PUT":
+			chain.ThenFunc(Put).ServeHTTP(w, r)
+		case "DELETE":
+			chain.ThenFunc(Delete).ServeHTTP(w, r)
+		case "PATCH":
+			chain.ThenFunc(Patch).ServeHTTP(w, r)
+		}
+	})
 
-	return middle
+	return mux
 }

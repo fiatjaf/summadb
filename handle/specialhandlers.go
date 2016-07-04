@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
-
 	db "github.com/fiatjaf/summadb/database"
 	responses "github.com/fiatjaf/summadb/handle/responses"
 	settings "github.com/fiatjaf/summadb/settings"
@@ -19,8 +17,7 @@ func DatabaseInfo(w http.ResponseWriter, r *http.Request) {
 
 	lastSeq, err := db.LastSeqAt(ctx.path)
 	if err != nil {
-		log.Print("responses.Unknown error: ", err)
-		res := responses.UnknownError()
+		res := responses.UnknownError(err.Error())
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
@@ -57,8 +54,7 @@ func Changes(w http.ResponseWriter, r *http.Request) {
 	path := db.CleanPath(ctx.path)
 	changes, err := db.ListChangesAt(path, since)
 	if err != nil {
-		log.Print("responses.Unknown error: ", err)
-		res := responses.UnknownError()
+		res := responses.UnknownError(err.Error())
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
@@ -98,8 +94,7 @@ func AllDocs(w http.ResponseWriter, r *http.Request) {
 	path := db.CleanPath(ctx.path)
 	tree, err := db.GetTreeAt(path)
 	if err != nil {
-		log.Print("unknown error: ", err)
-		res := responses.UnknownError()
+		res := responses.UnknownError(err.Error())
 		w.WriteHeader(res.Code)
 		json.NewEncoder(w).Encode(res)
 		return
