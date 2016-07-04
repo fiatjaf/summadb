@@ -1,6 +1,6 @@
 # SummaDB [![Travis-CI build status](https://travis-ci.org/fiatjaf/summadb.svg)](https://travis-ci.org/fiatjaf/summadb)
 
-SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical database** with infinitely nested sub-databases, all those independently **syncable with PouchDB**. It offers a full-blown REST interface similar to CouchDB (with PUT calls that can be pointed to any leaf of the hierarchical tree and a PATCH method for multiple arbitrary leaf updates).
+SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical database** with infinitely nested sub-databases, all those independently **syncable with PouchDB**. It offers a full-blown REST interface similar to CouchDB (with PUT calls that can be pointed to any leaf of the hierarchical tree and a PATCH method for multiple arbitrary leaf updates) and a [GraphQL](http://facebook.github.io/graphql) read-only query interface
 
 ## Features
 
@@ -8,7 +8,7 @@ SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical 
   - [x] [PouchDB](http://pouchdb.com/) syncing
   - [x] Supports fine-grained document updates with PATCH
   - [x] Every document is also a database
-  - [ ] GraphQL read queries
+  - [x] GraphQL read queries
   - [ ] CouchDB-like [map functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
   - [ ] Changes feed at each hierarchy level
     - [x] Static
