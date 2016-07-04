@@ -12,14 +12,15 @@ SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical 
   - [ ] CouchDB-like [map functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
   - [ ] Changes feed at each hierarchy level
     - [x] Static
-    - [ ] Published continuously through
+    - [ ] Published continuously
       - [ ] long-polling
       - [ ] websockets
-      - [ ] webhooks
+      - [ ] webhooks (_maybe_)
+  - [ ] `/_format/fn` endpoint (_maybe_)
   - [ ] Users
     - [x] User accounts for REST access
     - [x] Basic HTTP Auth
     - [x] ACLs with read, write and admin access at each hierarchy level
     - [x] Users tied to each sub database, instead of only at root
     - [ ] [JWT](http://jwt.io/) sessions
-  - [ ] Websocket server compatible with [socket-pouch](https://github.com/nolanlawson/socket-pouch)
+  - [ ] Websocket server compatible with [socket-pouch](https://github.com/nolanlawson/socket-pouch) (_maybe_)
