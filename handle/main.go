@@ -4,26 +4,25 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/carbocation/interpose/adaptors"
 	"github.com/justinas/alice"
 	"github.com/rs/cors"
 )
 
-var corsMiddleware = adaptors.FromNegroni(cors.New(cors.Options{
+var corsMiddleware = cors.New(cors.Options{
 	AllowedOrigins:   []string{"*"},
 	AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 	AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
 	AllowCredentials: true,
-}))
+}).Handler
 
 func BuildHandler() http.Handler {
 	// middleware for non-graphql endpoints
 	chain := alice.New(
+		corsMiddleware,
 		createContext,
 		setCommonVariables,
 		setUserVariable,
 		authMiddleware,
-		corsMiddleware,
 	)
 
 	// create, update, delete, view values
