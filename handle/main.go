@@ -6,13 +6,16 @@ import (
 
 	"github.com/justinas/alice"
 	"github.com/rs/cors"
+
+	settings "github.com/fiatjaf/summadb/settings"
 )
 
 var corsMiddleware = cors.New(cors.Options{
-	AllowedOrigins:   []string{"*"},
+	AllowedOrigins:   settings.CORS_ORIGINS,
 	AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 	AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
 	AllowCredentials: true,
+	Debug:            settings.DEBUG,
 }).Handler
 
 func BuildHandler() http.Handler {

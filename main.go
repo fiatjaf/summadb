@@ -17,22 +17,19 @@ func main() {
 	usage := `SummaDB ` + settings.VERSION + `
 
 Usage:
-  summadb [--reset] [--port=<port>] [--db=<dbfile>]
+  summadb [--reset] [--debug] [--cors=<domains>] [--port=<port>] [--db=<dbfile>]
 
 Options:
-  -h --help     Show this screen.
-  --version     Show version.
-  --db=<dbfile> The path of the underlying LevelDB [default: /tmp/summa.db]
-  --port=<port> Choose the port in which the HTTP server will listen [default: 5000]
-  --reset       Before starting, erase all database contents and start from zero.
+  -h --help        Show this screen.
+  --version        Show version.
+  --db=<dbfile>    The path of the underlying LevelDB [default: /tmp/summa.db]
+  --port=<port>    Choose the port in which the HTTP server will listen [default: 5000]
+  --cors=<domains> Specify a list of comma-separated domains [default: *]
+  --reset          Before starting, erase all database contents and start from zero.
+  --debug          Force debug. Overrides DEBUG and LOGLEVEL environment variable.
     `
 	arguments, _ := docopt.Parse(usage, nil, true, settings.VERSION, false)
-	if port, _ := arguments["--port"]; port != nil {
-		settings.PORT = port.(string)
-	}
-	if dbfile, _ := arguments["--db"]; dbfile != nil {
-		settings.DBFILE = dbfile.(string)
-	}
+	settings.HandleArgs(arguments)
 
 	log.WithFields(log.Fields{
 		"DBFILE":       settings.DBFILE,
