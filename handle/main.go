@@ -10,18 +10,9 @@ import (
 	settings "github.com/fiatjaf/summadb/settings"
 )
 
-var corsMiddleware = cors.New(cors.Options{
-	AllowedOrigins:   settings.CORS_ORIGINS,
-	AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-	AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
-	AllowCredentials: true,
-	Debug:            settings.DEBUG,
-}).Handler
-
 func BuildHandler() http.Handler {
 	// middleware for non-graphql endpoints
 	chain := alice.New(
-		corsMiddleware,
 		createContext,
 		setCommonVariables,
 		setUserVariable,
@@ -39,7 +30,6 @@ func BuildHandler() http.Handler {
 				alice.New(
 					createContext,
 					setUserVariable,
-					corsMiddleware,
 				).ThenFunc(HandleGraphQL).ServeHTTP(w, r)
 			} else {
 				chain.ThenFunc(Post).ServeHTTP(w, r)
@@ -55,5 +45,11 @@ func BuildHandler() http.Handler {
 		}
 	})
 
-	return mux
+	return cors.New(cors.Options{
+		AllowedOrigins:   settings.CORS_ORIGINS,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
+		AllowCredentials: true,
+		Debug:            settings.DEBUG,
+	}).Handler(mux)
 }
