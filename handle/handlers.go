@@ -109,6 +109,12 @@ func Get(w http.ResponseWriter, r *http.Request) {
 			response = []byte(ctx.currentRev)
 		} else {
 			response, err = db.GetValueAt(ctx.path)
+			if err != nil {
+				res := responses.NotFound()
+				w.WriteHeader(res.Code)
+				json.NewEncoder(w).Encode(res)
+				return
+			}
 		}
 	}
 

@@ -50,6 +50,6 @@ func BuildHandler() http.Handler {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		AllowedHeaders:   []string{"Content-Type", "Accept", "If-Match"},
 		AllowCredentials: true,
-		Debug:            settings.DEBUG,
+		Debug:            false,
 	}).Handler(mux)
 }

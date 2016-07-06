@@ -51,7 +51,7 @@ type Row struct {
 	Id    string                 `json:"id"`
 	Key   string                 `json:"key"`
 	Value interface{}            `json:"value"`
-	Doc   map[string]interface{} `json:"doc"`
+	Doc   map[string]interface{} `json:"doc,omitempty"`
 	Error string                 `json:"error,omitempty"`
 }
 

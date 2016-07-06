@@ -1,5 +1,5 @@
 {
-  "name": "summadb_integration_tests",
+  "name": "summadb-integration-tests",
   "version": "0.0.0",
   "description": "",
   "main": "test.js",
