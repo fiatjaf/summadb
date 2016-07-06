@@ -43,29 +43,29 @@ func HandleGraphQL(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		gql = r.FormValue("query")
 		break
-	case "application/graphql":
+	// case "application/graphql":
+	default:
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			json.NewEncoder(w).Encode(GraphQLResponse{
 				Errors: []GraphQLError{GraphQLError{"couldn't read request body."}},
 			})
+			return
 		}
 		gql = string(body)
-		break
-	default:
-		json.NewEncoder(w).Encode(GraphQLResponse{
-			Errors: []GraphQLError{GraphQLError{"invalid content-type"}},
-		})
-		return
 	}
 
 	doc, err := parser.Parse(parser.ParseParams{
 		Source:  gql,
 		Options: parser.ParseOptions{true, true},
 	})
-	if err != nil {
+	if err != nil || len(doc.Definitions) != 1 {
+		message := "your graphql query must describe a 'query' operation."
+		if err != nil {
+			message = err.Error()
+		}
 		json.NewEncoder(w).Encode(GraphQLResponse{
-			Errors: []GraphQLError{GraphQLError{"failed to parse gql query."}},
+			Errors: []GraphQLError{GraphQLError{"failed to parse gql query: " + message}},
 		})
 		return
 	}
