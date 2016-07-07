@@ -3,7 +3,7 @@
 var netloc = '0.0.0.0'
 if (typeof window === 'undefined') {
   expect = require('chai').expect
-  PouchDB = require('pouchdb')
+  PouchDB = require('pouchdb-node')
   PouchDB.plugin(require('transform-pouch'))
   pouchSumma = require('pouch-summa')
   fetch = require('node-fetch')
