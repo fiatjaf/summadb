@@ -41,6 +41,7 @@ You can see SummaDB in action right now, without installing anything. There is
       * `curl -X PATCH 'https://summadb-temp.herokuapp.com/players?rev=2-0889863c34' -d '{"kalualualeiamba": {"class": "mage"}, "kalimbaharkandant": {"inventory": {"red potion": 8}}}` to change the class of a player and the number of potions of other.
       * `curl -X POST https://summadb-temp.herokuapp.com/_graphql -H 'content-type: application/json' -d '{"query": "query { players { kalimbaharkandant { inventory { cane } } }, items { cane { desc, cost, damage } } }"}'` to query specific values with GraphQL.
   * a [simple Javascript](https://summadb.github.io/admin/?summa=https://summadb-temp.herokuapp.com) app that allows browsing the hierarchical tree of data in that same live database
+    * [![admin interface screenshot](https://raw.githubusercontent.com/summadb/admin/gh-pages/screenshot.png)](https://summadb.github.io/admin/?summa=https://summadb-temp.herokuapp.com)
   * a small [demo of the PouchDB syncing capabilities](https://summadb.github.io/demo/)
     * it syncs two different sub-databases from the SummaDB to two different PouchDBs
     * the final result will be shown on a [PouchDB version of Fauxton](https://summadb.github.io/demo/fauxton/)
