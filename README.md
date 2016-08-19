@@ -9,21 +9,25 @@ SummaDB is a [CouchDB](http://couchdb.org/)-inspired open source **hierarchical 
   - [x] Supports fine-grained document updates with PATCH
   - [x] Every document is also a database
   - [x] GraphQL read queries
-  - [ ] CouchDB-like [map functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
+      - [ ] Support for meta queries and GraphiQL
+      - [ ] Tiny util functions callable from GraphQL queries (`list(from, to)` at each level) (_maybe_)
+  - [ ] CouchDB-like [view functions](http://docs.couchdb.org/en/1.6.1/couchapp/ddocs.html#map-functions), implemented at each sub database level and run in the background
+      - [ ] View functions implemented as read-only databases that can sync with PouchDB (_maybe_)
   - [ ] Changes feed at each hierarchy level
     - [x] Static
     - [ ] Published continuously
       - [ ] long-polling
       - [ ] websockets
       - [ ] webhooks (_maybe_)
-  - [ ] `/_format/fn` endpoint (_maybe_)
+  - [ ] Validation functions with [jq](https://stedolan.github.io/jq/manual/) filters (_maybe_)
   - [ ] Users
     - [x] User accounts for REST access
     - [x] Basic HTTP Auth
     - [x] ACLs with read, write and admin access at each hierarchy level
     - [x] Users tied to each sub database, instead of only at root
     - [ ] [JWT](http://jwt.io/) sessions
-  - [ ] Websocket server compatible with [socket-pouch](https://github.com/nolanlawson/socket-pouch) (_maybe_)
+  - [ ] SummulaDB, a SummaDB that runs in the browser
+    - [ ] Replication protocol
 
 ## Demo
 

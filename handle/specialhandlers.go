@@ -420,6 +420,9 @@ func RevsDiff(w http.ResponseWriter, r *http.Request) {
 		} else {
 			/* otherwise we will say we have the current rev and none of the others,
 			   because that's the truth. */
+			// TODO maybe here we should say that we have these old revs
+			// --  either we actually have them, but they are deleted, or
+			//     we don't, but they are unnecessary anyway.
 			currentRev := string(currentRevb)
 			for _, irev := range irevs.([]interface{}) {
 				rev := irev.(string)

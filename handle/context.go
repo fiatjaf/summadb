@@ -132,6 +132,7 @@ func setCommonVariables(next http.Handler) http.Handler {
 					res := responses.BadRequest("invalid JSON sent as JSON")
 					w.WriteHeader(res.Code)
 					json.NewEncoder(w).Encode(res)
+					return
 				}
 			}
 		}
