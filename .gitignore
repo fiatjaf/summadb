@@ -1,0 +1,5 @@
+*.db
+*.swp
+*.swo
+summadb
+npm-debug.log
