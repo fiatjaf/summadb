@@ -17,8 +17,8 @@ func Set(p path, t tree) error {
 }
 
 func setOperations(p path, t tree) (ops []levelup.Operation) {
-	t.recurse(p, func(p path, v *value) {
-		jsonvalue, _ := v.MarshalJSON()
+	t.recurse(p, func(p path, l leaf) {
+		jsonvalue, _ := l.MarshalJSON()
 		ops = append(ops, levelup.Put(p.join(), string(jsonvalue)))
 	})
 	return ops
@@ -44,3 +44,10 @@ func Replace(p path, t tree) error {
 	ops := append(dropOperations(p), setOperations(p, t)...)
 	return db.Batch(ops)
 }
+
+// func Get(p path) (tree, error) {
+// 	iter := db.ReadRange(&levelup.RangeOpts{
+// 		Start: p.join(),
+// 		End:   p.join() + "~~~",
+// 	})
+// }

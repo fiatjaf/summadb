@@ -9,7 +9,7 @@ import (
 )
 
 type tree struct {
-	value    *value
+	leaf     leaf
 	subtrees map[string]tree
 }
 
@@ -42,14 +42,14 @@ func (t *tree) fromInterface(v interface{}) error {
 		}
 	case int:
 	case float64:
-		t.value = &value{kind: NUMBER, float64: float64(val)}
+		t.leaf = leaf{kind: NUMBER, float64: float64(val)}
 	case string:
-		t.value = &value{kind: STRING, string: val}
+		t.leaf = leaf{kind: STRING, string: val}
 	case bool:
-		t.value = &value{kind: BOOL, bool: val}
+		t.leaf = leaf{kind: BOOL, bool: val}
 	default:
 		if v == nil {
-			t.value = &value{kind: NULL}
+			t.leaf = leaf{kind: NULL}
 		} else {
 			return errors.New("type not expected.")
 		}
@@ -60,13 +60,13 @@ func (t *tree) fromInterface(v interface{}) error {
 func (t tree) MarshalJSON() ([]byte, error) {
 	buffer := bytes.NewBufferString(`{`)
 
-	if t.value != nil {
-		jsonvalue, err := t.value.MarshalJSON()
+	if t.leaf.kind != UNDEFINED {
+		jsonleaf, err := t.leaf.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
 		buffer.WriteString(`"_val":`)
-		buffer.Write(jsonvalue)
+		buffer.Write(jsonleaf)
 
 		// separate "_val" from the other keys
 		if len(t.subtrees) > 0 {
@@ -77,11 +77,11 @@ func (t tree) MarshalJSON() ([]byte, error) {
 	subtrees := make([][]byte, len(t.subtrees))
 	i := 0
 	for k, tree := range t.subtrees {
-		jsonvalue, err := tree.MarshalJSON()
+		jsonleaf, err := tree.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		subtrees[i] = append([]byte(`"`+k+`":`), jsonvalue...)
+		subtrees[i] = append([]byte(`"`+k+`":`), jsonleaf...)
 		i++
 	}
 	buffer.Write(bytes.Join(subtrees, []byte(",")))
@@ -90,46 +90,47 @@ func (t tree) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (t tree) recurse(p path, handle func(path, *value)) {
-	handle(p, t.value)
+func (t tree) recurse(p path, handle func(path, leaf)) {
+	handle(p, t.leaf)
 	for k, t := range t.subtrees {
 		t.recurse(p.concat(k), handle)
 	}
 }
 
 const (
-	STRING = 's'
-	NUMBER = 'n'
-	BOOL   = 'b'
-	NULL   = 'u'
+	STRING    = 's'
+	NUMBER    = 'n'
+	BOOL      = 'b'
+	NULL      = 'u'
+	UNDEFINED = 0
 )
 
-type value struct {
+type leaf struct {
 	kind byte
 	float64
 	string
 	bool
 }
 
-func (v value) MarshalJSON() ([]byte, error) {
-	switch v.kind {
+func (l leaf) MarshalJSON() ([]byte, error) {
+	switch l.kind {
 	case STRING:
-		return []byte(`"` + v.string + `"`), nil
+		return []byte(`"` + l.string + `"`), nil
 	case NUMBER:
-		return []byte(strconv.FormatFloat(v.float64, 'f', -1, 32)), nil
+		return []byte(strconv.FormatFloat(l.float64, 'f', -1, 32)), nil
 	case BOOL:
-		if v.bool {
+		if l.bool {
 			return []byte("true"), nil
 		}
 		return []byte("false"), nil
 	case NULL:
 		return []byte("null"), nil
 	}
-	return []byte("undefined"), nil
+	return nil, errors.New("unexpected type.")
 }
 
 type path []string
 
-func NewPath(s string) path         { return path(strings.Split(s, "/")) }
+func Path(s string) path            { return path(strings.Split(s, "/")) }
 func (p path) join() string         { return strings.Join(p, "/") }
 func (p path) concat(k string) path { return append(p, k) }

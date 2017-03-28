@@ -21,27 +21,27 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	c.Assert(Tree(`{"a": "b"}`), DeepEquals, tree{
 		subtrees: map[string]tree{
 			"a": tree{
-				value: &value{kind: STRING, string: "b"},
+				leaf: leaf{kind: STRING, string: "b"},
 			},
 		},
 	})
 	c.Assert(Tree(`92`), DeepEquals, tree{
-		value: &value{kind: NUMBER, float64: 92},
+		leaf: leaf{kind: NUMBER, float64: 92},
 	})
 	c.Assert(Tree(`{"a": {"f": false, "n": null, "m": {"t": true}}}`), DeepEquals, tree{
 		subtrees: map[string]tree{
 			"a": tree{
 				subtrees: map[string]tree{
 					"f": tree{
-						value: &value{kind: BOOL, bool: false},
+						leaf: leaf{kind: BOOL, bool: false},
 					},
 					"n": tree{
-						value: &value{kind: NULL},
+						leaf: leaf{kind: NULL},
 					},
 					"m": tree{
 						subtrees: map[string]tree{
 							"t": tree{
-								value: &value{kind: BOOL, bool: true},
+								leaf: leaf{kind: BOOL, bool: true},
 							},
 						},
 					},
@@ -55,32 +55,32 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	j, _ := (tree{
 		subtrees: map[string]tree{
 			"a": tree{
-				value: &value{kind: STRING, string: "b"},
+				leaf: leaf{kind: STRING, string: "b"},
 			},
 		},
 	}).MarshalJSON()
 	c.Assert(j, DeepEquals, []byte(`{"a":{"_val":"b"}}`))
 
 	j, _ = (tree{
-		value: &value{kind: NUMBER, float64: 92},
+		leaf: leaf{kind: NUMBER, float64: 92},
 	}).MarshalJSON()
 	c.Assert(j, DeepEquals, []byte(`{"_val":92}`))
 
 	j, _ = (tree{
-		value: &value{kind: STRING, string: "www"},
+		leaf: leaf{kind: STRING, string: "www"},
 		subtrees: map[string]tree{
 			"a": tree{
 				subtrees: map[string]tree{
 					"f": tree{
-						value: &value{kind: BOOL, bool: false},
+						leaf: leaf{kind: BOOL, bool: false},
 					},
 					"n": tree{
-						value: &value{kind: NULL},
+						leaf: leaf{kind: NULL},
 					},
 					"m": tree{
 						subtrees: map[string]tree{
 							"t": tree{
-								value: &value{kind: BOOL, bool: true},
+								leaf: leaf{kind: BOOL, bool: true},
 							},
 						},
 					},
