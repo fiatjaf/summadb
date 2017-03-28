@@ -3,36 +3,40 @@ package database
 import (
 	"github.com/fiatjaf/goleveldown"
 	"github.com/fiatjaf/levelup"
+	"github.com/fiatjaf/summadb/types"
 )
 
-var db levelup.DB
-
-func Start(path string) {
-	db = goleveldown.NewDatabase(path)
+type SummaDB struct {
+	levelup.DB
 }
 
-func Set(p path, t tree) error {
-	ops := setOperations(p, t)
+func Open(dbpath string) *SummaDB {
+	db := goleveldown.NewDatabase(dbpath)
+	return &SummaDB{db}
+}
+
+func (db *SummaDB) Set(p types.Path, t types.Tree) error {
+	ops := db.setOperations(p, t)
 	return db.Batch(ops)
 }
 
-func setOperations(p path, t tree) (ops []levelup.Operation) {
-	t.recurse(p, func(p path, l leaf) {
+func (db *SummaDB) setOperations(p types.Path, t types.Tree) (ops []levelup.Operation) {
+	t.Recurse(p, func(p types.Path, l types.Leaf) {
 		jsonvalue, _ := l.MarshalJSON()
-		ops = append(ops, levelup.Put(p.join(), string(jsonvalue)))
+		ops = append(ops, levelup.Put(p.Join(), string(jsonvalue)))
 	})
 	return ops
 }
 
-func Drop(p path) error {
-	ops := dropOperations(p)
+func (db *SummaDB) Drop(p types.Path) error {
+	ops := db.dropOperations(p)
 	return db.Batch(ops)
 }
 
-func dropOperations(p path) (ops []levelup.Operation) {
+func (db *SummaDB) dropOperations(p types.Path) (ops []levelup.Operation) {
 	iter := db.ReadRange(&levelup.RangeOpts{
-		Start: p.join(),
-		End:   p.join() + "~~~",
+		Start: p.Join(),
+		End:   p.Join() + "~~~",
 	})
 	for ; iter.Valid(); iter.Next() {
 		ops = append(ops, levelup.Del(iter.Key()))
@@ -40,14 +44,14 @@ func dropOperations(p path) (ops []levelup.Operation) {
 	return ops
 }
 
-func Replace(p path, t tree) error {
-	ops := append(dropOperations(p), setOperations(p, t)...)
+func (db *SummaDB) Replace(p types.Path, t types.Tree) error {
+	ops := append(db.dropOperations(p), db.setOperations(p, t)...)
 	return db.Batch(ops)
 }
 
-// func Get(p path) (tree, error) {
+// func Get(p types.Path) (types.Tree, error) {
 // 	iter := db.ReadRange(&levelup.RangeOpts{
-// 		Start: p.join(),
-// 		End:   p.join() + "~~~",
+// 		Start: p.Join(),
+// 		End:   p.Join() + "~~~",
 // 	})
 // }
