@@ -26,6 +26,10 @@ func StringLeaf(v string) Leaf  { return Leaf{Kind: STRING, string: v} }
 func NumberLeaf(v float64) Leaf { return Leaf{Kind: NUMBER, float64: v} }
 func NullLeaf() Leaf            { return Leaf{Kind: NULL} }
 
+func (l Leaf) String() string  { return l.string }
+func (l Leaf) Number() float64 { return l.float64 }
+func (l Leaf) Bool() bool      { return l.bool }
+
 func (l Leaf) MarshalJSON() ([]byte, error) {
 	switch l.Kind {
 	case STRING:
