@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 )
@@ -20,6 +21,11 @@ type Leaf struct {
 	bool
 }
 
+func BoolLeaf(v bool) Leaf      { return Leaf{Kind: BOOL, bool: v} }
+func StringLeaf(v string) Leaf  { return Leaf{Kind: STRING, string: v} }
+func NumberLeaf(v float64) Leaf { return Leaf{Kind: NUMBER, float64: v} }
+func NullLeaf() Leaf            { return Leaf{Kind: NULL} }
+
 func (l Leaf) MarshalJSON() ([]byte, error) {
 	switch l.Kind {
 	case STRING:
@@ -37,7 +43,23 @@ func (l Leaf) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("unexpected type.")
 }
 
-func BoolLeaf(v bool) Leaf      { return Leaf{Kind: BOOL, bool: v} }
-func StringLeaf(v string) Leaf  { return Leaf{Kind: STRING, string: v} }
-func NumberLeaf(v float64) Leaf { return Leaf{Kind: NUMBER, float64: v} }
-func NullLeaf() Leaf            { return Leaf{Kind: NULL} }
+func (l *Leaf) UnmarshalJSON(j []byte) error {
+	var v interface{}
+	err := json.Unmarshal(j, &v)
+	if err != nil {
+		return err
+	}
+
+	switch val := v.(type) {
+	case string:
+		*l = StringLeaf(val)
+	case float64:
+		*l = NumberLeaf(float64(val))
+	case bool:
+		*l = BoolLeaf(val)
+	default:
+		*l = NullLeaf()
+	}
+
+	return nil
+}

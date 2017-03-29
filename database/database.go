@@ -38,6 +38,8 @@ func (db *SummaDB) dropOperations(p types.Path) (ops []levelup.Operation) {
 		Start: p.Join(),
 		End:   p.Join() + "~~~",
 	})
+	defer iter.Release()
+
 	for ; iter.Valid(); iter.Next() {
 		ops = append(ops, levelup.Del(iter.Key()))
 	}
@@ -49,9 +51,54 @@ func (db *SummaDB) Replace(p types.Path, t types.Tree) error {
 	return db.Batch(ops)
 }
 
-// func Get(p types.Path) (types.Tree, error) {
-// 	iter := db.ReadRange(&levelup.RangeOpts{
-// 		Start: p.Join(),
-// 		End:   p.Join() + "~~~",
-// 	})
-// }
+func (db *SummaDB) Read(p types.Path) (t types.Tree, err error) {
+	iter := db.ReadRange(&levelup.RangeOpts{
+		Start: p.Join(),
+		End:   p.Join() + "~~~",
+	})
+	defer iter.Release()
+
+	tree := types.NewTree()
+	for ; iter.Valid(); iter.Next() {
+		if err = iter.Error(); err != nil {
+			return
+		}
+
+		fullpath := types.ParsePath(iter.Key())
+		relpath := fullpath.RelativeTo(p)
+
+		value := iter.Value()
+		if value == "" {
+			continue
+		}
+
+		leaf := &types.Leaf{}
+		if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
+			return
+		}
+		//log.Print("row ", fullpath, " ", relpath, " ", iter.Key(), " ", iter.Value(), " leaf: ", *leaf)
+
+		currentbranch := tree
+		for i := 0; i <= len(relpath); i++ {
+			if i == len(relpath) {
+				// last key of the path
+				//log.Print("   key ", i, " (last) ", value, " leaf: ", *leaf)
+				currentbranch.Leaf = *leaf
+			} else {
+				key := relpath[i]
+				// create a subbranch at this key
+				subbranch, exists := currentbranch.Branches[key]
+				if !exists {
+					subbranch = types.NewTree()
+					currentbranch.Branches[key] = subbranch
+				}
+				//log.Print("   key ", i, " ", key)
+
+				currentbranch = subbranch
+				// proceed to the next, deeper, branch
+			}
+		}
+	}
+
+	return *tree, nil
+}

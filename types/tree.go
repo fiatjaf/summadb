@@ -7,9 +7,13 @@ import (
 )
 
 type Tree struct {
-	Leaf     Leaf
-	Branches map[string]Tree
+	Leaf
+	Branches
 }
+
+type Branches map[string]*Tree
+
+func NewTree() *Tree { return &Tree{Branches: make(Branches)} }
 
 func (t *Tree) UnmarshalJSON(j []byte) error {
 	var v interface{}
@@ -31,15 +35,16 @@ func TreeFromInterface(v interface{}) (*Tree, error) {
 
 	switch val := v.(type) {
 	case map[string]interface{}:
-		t.Branches = make(map[string]Tree, len(val))
+		t.Branches = make(Branches, len(val))
 		for k, v := range val {
 			subt, err := TreeFromInterface(v)
 			if err != nil {
 				return nil, err
 			}
-			t.Branches[k] = *subt
+			t.Branches[k] = subt
 		}
 	case int:
+		t.Leaf = NumberLeaf(float64(val))
 	case float64:
 		t.Leaf = NumberLeaf(val)
 	case string:
@@ -92,6 +97,6 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 func (t Tree) Recurse(p Path, handle func(Path, Leaf)) {
 	handle(p, t.Leaf)
 	for k, t := range t.Branches {
-		t.Recurse(p.Concat(k), handle)
+		t.Recurse(append(p, k), handle)
 	}
 }

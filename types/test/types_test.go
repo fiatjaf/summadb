@@ -1,10 +1,10 @@
 package test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/fiatjaf/summadb/types"
+	. "github.com/fiatjaf/summadb/utils"
 	. "gopkg.in/check.v1"
 )
 
@@ -20,8 +20,8 @@ var _ = Suite(&TypesSuite{})
 
 func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	c.Assert(treeFromJSON(`{"a": "b"}`), DeepEquals, types.Tree{
-		Branches: map[string]types.Tree{
-			"a": types.Tree{
+		Branches: types.Branches{
+			"a": &types.Tree{
 				Leaf: types.StringLeaf("b"),
 			},
 		},
@@ -30,18 +30,18 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 		Leaf: types.NumberLeaf(92),
 	})
 	c.Assert(treeFromJSON(`{"a": {"f": false, "n": null, "m": {"t": true}}}`), DeepEquals, types.Tree{
-		Branches: map[string]types.Tree{
-			"a": types.Tree{
-				Branches: map[string]types.Tree{
-					"f": types.Tree{
+		Branches: types.Branches{
+			"a": &types.Tree{
+				Branches: types.Branches{
+					"f": &types.Tree{
 						Leaf: types.BoolLeaf(false),
 					},
-					"n": types.Tree{
+					"n": &types.Tree{
 						Leaf: types.NullLeaf(),
 					},
-					"m": types.Tree{
-						Branches: map[string]types.Tree{
-							"t": types.Tree{
+					"m": &types.Tree{
+						Branches: types.Branches{
+							"t": &types.Tree{
 								Leaf: types.BoolLeaf(true),
 							},
 						},
@@ -54,8 +54,8 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 
 func (s *TypesSuite) TestMarshalJSON(c *C) {
 	j, _ := (types.Tree{
-		Branches: map[string]types.Tree{
-			"a": types.Tree{
+		Branches: types.Branches{
+			"a": &types.Tree{
 				Leaf: types.StringLeaf("b"),
 			},
 		},
@@ -69,18 +69,18 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 
 	j, _ = (types.Tree{
 		Leaf: types.StringLeaf("www"),
-		Branches: map[string]types.Tree{
-			"a": types.Tree{
-				Branches: map[string]types.Tree{
-					"f": types.Tree{
+		Branches: types.Branches{
+			"a": &types.Tree{
+				Branches: types.Branches{
+					"f": &types.Tree{
 						Leaf: types.BoolLeaf(false),
 					},
-					"n": types.Tree{
+					"n": &types.Tree{
 						Leaf: types.NullLeaf(),
 					},
-					"m": types.Tree{
-						Branches: map[string]types.Tree{
-							"t": types.Tree{
+					"m": &types.Tree{
+						Branches: types.Branches{
+							"t": &types.Tree{
 								Leaf: types.BoolLeaf(true),
 							},
 						},
@@ -90,13 +90,5 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 		},
 	}).MarshalJSON()
 
-	// since keys are out of order here, let's do this comparison in a bizarre way:
-	var obtained interface{}
-	json.Unmarshal(j, &obtained)
-	var expected interface{}
-	json.Unmarshal(
-		[]byte(`{"a":{"f": {"_val":false},"n":{"_val":null},"m":{"t":{"_val":true}}},"_val":"www"}`),
-		&expected,
-	)
-	c.Assert(obtained, DeepEquals, expected)
+	c.Assert(j, JSONEquals, `{"a":{"f": {"_val":false},"n":{"_val":null},"m":{"t":{"_val":true}}},"_val":"www"}`)
 }
