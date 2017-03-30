@@ -8,8 +8,6 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-var err error
-
 func Test(t *testing.T) {
 	TestingT(t)
 }
@@ -23,31 +21,25 @@ func (s *RunLuaSuite) TestRunView(c *C) {
 emit("x", {b="name"})
 emit("y", {a=3, 4, 3, b=false, 12, "ss", {xx="xx"}})
 emit("z", 23)
-emit("w", "xuyxuxu")
-emit("i", true)
+emit({"w", "m"}, "dabliuême")
+emit({"boolean", true, 0}, false)
 emit("r", null)
     `, types.Tree{})
 
 	c.Assert(err, IsNil)
-	c.Assert(emitted, DeepEquals, map[string]interface{}{
-		"w": "xuyxuxu",
-		"i": bool(true),
-		"r": nil,
-		"x": map[string]interface{}{
-			"b": "name",
-		},
-		"y": map[string]interface{}{
-			"4": "ss",
-			"5": map[string]interface{}{
-				"xx": "xx",
-			},
-			"a": float64(3),
-			"b": bool(false),
-			"1": float64(4),
-			"2": float64(3),
-			"3": float64(12),
-		},
-		"z": float64(23),
+	c.Assert(emitted, DeeplyEquals, []EmittedRow{
+		EmittedRow{ToIndexable("x"), map[string]interface{}{"b": "name"}},
+		EmittedRow{ToIndexable("y"), []interface{}{
+			float64(4),
+			float64(3),
+			float64(12),
+			"ss",
+			map[string]interface{}{"xx": "xx"},
+		}},
+		EmittedRow{ToIndexable("z"), float64(23)},
+		EmittedRow{ToIndexable([]interface{}{"w", "m"}), "dabliuême"},
+		EmittedRow{ToIndexable([]interface{}{"boolean", true, float64(0)}), false},
+		EmittedRow{ToIndexable("r"), nil},
 	})
 
 	emitted, err = View(`
@@ -61,7 +53,7 @@ emit(doc.name._val, string.len(doc.name._val))
 	})
 
 	c.Assert(err, IsNil)
-	c.Assert(emitted, DeeplyEquals, map[string]interface{}{
-		"mariazinha": float64(10),
+	c.Assert(emitted, DeeplyEquals, []EmittedRow{
+		EmittedRow{ToIndexable("mariazinha"), float64(10)},
 	})
 }

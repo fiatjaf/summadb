@@ -32,7 +32,12 @@ var DeeplyEquals check.Checker = &deeplyEqualsChecker{
 }
 
 func (checker *deeplyEqualsChecker) Check(params []interface{}, names []string) (result bool, e string) {
-	return len(pretty.Diff(params[0], params[1])) == 0, ""
+	diff := pretty.Diff(params[0], params[1])
+	if len(diff) > 0 {
+		return false, "differences: \n" + strings.Join(diff, "\n")
+	} else {
+		return true, ""
+	}
 }
 
 // --------------------------------------------------------------------

@@ -26,8 +26,10 @@ func collationIndex(x interface{}) byte {
 		return '4'
 	case []interface{}:
 		return '5'
-	default:
+	case map[interface{}]interface{}:
 		return '6'
+	default:
+		panic("collationIndex does not work with this type.")
 	}
 }
 
@@ -61,7 +63,7 @@ func indexify(key interface{}) (result []byte) {
 		}
 		return result
 	}
-	return
+	panic("indexify does not work with this type.")
 }
 
 func numToIndexable(num float64) (result []byte) {
