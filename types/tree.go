@@ -3,12 +3,14 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 )
 
 type Tree struct {
 	Leaf
 	Branches
+	Rev     string
+	View    string
+	Deleted bool
 }
 
 type Branches map[string]*Tree
@@ -21,77 +23,99 @@ func (t *Tree) UnmarshalJSON(j []byte) error {
 	if err != nil {
 		return err
 	}
-	parsedTree, err := TreeFromInterface(v)
-	if err != nil {
-		return err
-	}
 
-	*t = *parsedTree
+	*t = TreeFromInterface(v)
 	return nil
 }
 
-func TreeFromInterface(v interface{}) (*Tree, error) {
-	t := &Tree{}
+func TreeFromInterface(v interface{}) Tree {
+	t := Tree{}
 
 	switch val := v.(type) {
 	case map[string]interface{}:
+		if val, ok := val["_val"]; ok {
+			t.Leaf = LeafFromInterface(val)
+		}
+		if rev, ok := val["_rev"]; ok {
+			t.Rev = rev.(string)
+		}
+		if view, ok := val["_view"]; ok {
+			t.View = view.(string)
+		}
+		if deleted, ok := val["_deleted"]; ok {
+			t.Deleted = deleted.(bool)
+		}
+
+		delete(val, "_val")
+		delete(val, "_rev")
+		delete(val, "_view")
+		delete(val, "_deleted")
 		t.Branches = make(Branches, len(val))
 		for k, v := range val {
-			subt, err := TreeFromInterface(v)
-			if err != nil {
-				return nil, err
-			}
-			t.Branches[k] = subt
+			subt := TreeFromInterface(v)
+			t.Branches[k] = &subt
 		}
-	case int:
-		t.Leaf = NumberLeaf(float64(val))
-	case float64:
-		t.Leaf = NumberLeaf(val)
-	case string:
-		t.Leaf = StringLeaf(val)
-	case bool:
-		t.Leaf = BoolLeaf(val)
 	default:
-		if v == nil {
-			t.Leaf = NullLeaf()
-		} else {
-			return nil, errors.New("type not expected.")
-		}
+		t.Leaf = LeafFromInterface(v)
 	}
-	return t, nil
+	return t
 }
 
 func (t Tree) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString(`{`)
+	var parts [][]byte
 
+	// current leaf
 	if t.Leaf.Kind != UNDEFINED {
 		jsonLeaf, err := t.Leaf.MarshalJSON()
 		if err != nil {
 			return nil, err
 		}
-		buffer.WriteString(`"_val":`)
+		buffer := bytes.NewBufferString(`"_val":`)
 		buffer.Write(jsonLeaf)
-
-		// separate "_val" from the other keys
-		if len(t.Branches) > 0 {
-			buffer.WriteByte(byte(','))
-		}
+		parts = append(parts, buffer.Bytes())
 	}
 
-	subtrees := make([][]byte, len(t.Branches))
-	i := 0
-	for k, Tree := range t.Branches {
-		jsonLeaf, err := Tree.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-		subtrees[i] = append([]byte(`"`+k+`":`), jsonLeaf...)
-		i++
+	// rev
+	if t.Rev != "" {
+		buffer := bytes.NewBufferString(`"_rev":`)
+		buffer.WriteString(`"` + t.Rev + `"`)
+		parts = append(parts, buffer.Bytes())
 	}
-	buffer.Write(bytes.Join(subtrees, []byte(",")))
 
-	buffer.WriteString(`}`)
-	return buffer.Bytes(), nil
+	// view
+	if t.View != "" {
+		buffer := bytes.NewBufferString(`"_view":`)
+		buffer.WriteString(`"` + t.View + `"`)
+		parts = append(parts, buffer.Bytes())
+	}
+
+	// deleted
+	if t.Deleted {
+		buffer := bytes.NewBufferString(`"_deleted":`)
+		buffer.WriteString("true")
+		parts = append(parts, buffer.Bytes())
+	}
+
+	// all branches
+	if len(t.Branches) > 0 {
+		subtrees := make([][]byte, len(t.Branches))
+		i := 0
+		for k, Tree := range t.Branches {
+			jsonLeaf, err := Tree.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			subtrees[i] = append([]byte(`"`+k+`":`), jsonLeaf...)
+			i++
+		}
+		joinedbranches := bytes.Join(subtrees, []byte{','})
+		parts = append(parts, joinedbranches)
+	}
+
+	joined := bytes.Join(parts, []byte{','})
+	out := append([]byte{'{'}, joined...)
+	out = append(out, '}')
+	return out, nil
 }
 
 func (t Tree) Recurse(p Path, handle func(Path, Leaf)) {

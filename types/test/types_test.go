@@ -50,6 +50,34 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 			},
 		},
 	})
+
+	c.Assert(
+		treeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": false}`),
+		DeepEquals,
+		types.Tree{
+			Leaf:     types.NumberLeaf(12),
+			Rev:      "2-oweqwe",
+			View:     "emit(1, 2)",
+			Deleted:  false,
+			Branches: types.Branches{},
+		},
+	)
+
+	c.Assert(
+		treeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
+		DeepEquals,
+		types.Tree{
+			Rev: "3-s5w",
+			Branches: types.Branches{
+				"subt": &types.Tree{
+					Deleted:  true,
+					Rev:      "2-oweqwe",
+					View:     "emit(1, 2)",
+					Branches: types.Branches{},
+				},
+			},
+		},
+	)
 }
 
 func (s *TypesSuite) TestMarshalJSON(c *C) {
@@ -89,6 +117,39 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 			},
 		},
 	}).MarshalJSON()
+	c.Assert(
+		j,
+		JSONEquals,
+		`{"a":{"f": {"_val":false},"n":{"_val":null},"m":{"t":{"_val":true}}},"_val":"www"}`,
+	)
 
-	c.Assert(j, JSONEquals, `{"a":{"f": {"_val":false},"n":{"_val":null},"m":{"t":{"_val":true}}},"_val":"www"}`)
+	j, _ = (types.Tree{
+		Leaf:     types.NumberLeaf(12),
+		Rev:      "2-oweqwe",
+		View:     "emit(1, 2)",
+		Deleted:  false,
+		Branches: types.Branches{},
+	}).MarshalJSON()
+	c.Assert(
+		j,
+		JSONEquals,
+		`{"_val": 12, "_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": false}`,
+	)
+
+	j, _ = (types.Tree{
+		Rev: "3-s5w",
+		Branches: types.Branches{
+			"subt": &types.Tree{
+				Deleted:  true,
+				Rev:      "2-oweqwe",
+				View:     "emit(1, 2)",
+				Branches: types.Branches{},
+			},
+		},
+	}).MarshalJSON()
+	c.Assert(
+		j,
+		JSONEquals,
+		`{"subt": {"_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`,
+	)
 }

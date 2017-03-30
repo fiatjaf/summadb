@@ -54,16 +54,21 @@ func (l *Leaf) UnmarshalJSON(j []byte) error {
 		return err
 	}
 
-	switch val := v.(type) {
-	case string:
-		*l = StringLeaf(val)
-	case float64:
-		*l = NumberLeaf(float64(val))
-	case bool:
-		*l = BoolLeaf(val)
-	default:
-		*l = NullLeaf()
-	}
-
+	*l = LeafFromInterface(v)
 	return nil
+}
+
+func LeafFromInterface(v interface{}) Leaf {
+	switch val := v.(type) {
+	case int:
+		return NumberLeaf(float64(val))
+	case float64:
+		return NumberLeaf(val)
+	case string:
+		return StringLeaf(val)
+	case bool:
+		return BoolLeaf(val)
+	default:
+		return NullLeaf()
+	}
 }
