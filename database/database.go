@@ -3,15 +3,16 @@ package database
 import (
 	"github.com/fiatjaf/goleveldown"
 	"github.com/fiatjaf/levelup"
+	"github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/fiatjaf/summadb/types"
 )
 
 type SummaDB struct {
-	levelup.DB
+	stringlevelup.DB
 }
 
 func Open(dbpath string) *SummaDB {
-	db := goleveldown.NewDatabase(dbpath)
+	db := stringlevelup.StringDB(goleveldown.NewDatabase(dbpath))
 	return &SummaDB{db}
 }
 
@@ -23,7 +24,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 func (db *SummaDB) setOperations(p types.Path, t types.Tree) (ops []levelup.Operation) {
 	t.Recurse(p, func(p types.Path, l types.Leaf) {
 		jsonvalue, _ := l.MarshalJSON()
-		ops = append(ops, levelup.Put(p.Join(), string(jsonvalue)))
+		ops = append(ops, stringlevelup.Put(p.Join(), string(jsonvalue)))
 	})
 	return ops
 }
@@ -34,14 +35,14 @@ func (db *SummaDB) Drop(p types.Path) error {
 }
 
 func (db *SummaDB) dropOperations(p types.Path) (ops []levelup.Operation) {
-	iter := db.ReadRange(&levelup.RangeOpts{
+	iter := db.ReadRange(&stringlevelup.RangeOpts{
 		Start: p.Join(),
 		End:   p.Join() + "~~~",
 	})
 	defer iter.Release()
 
 	for ; iter.Valid(); iter.Next() {
-		ops = append(ops, levelup.Del(iter.Key()))
+		ops = append(ops, stringlevelup.Del(iter.Key()))
 	}
 	return ops
 }
@@ -52,7 +53,7 @@ func (db *SummaDB) Replace(p types.Path, t types.Tree) error {
 }
 
 func (db *SummaDB) Read(p types.Path) (t types.Tree, err error) {
-	iter := db.ReadRange(&levelup.RangeOpts{
+	iter := db.ReadRange(&stringlevelup.RangeOpts{
 		Start: p.Join(),
 		End:   p.Join() + "~~~",
 	})
