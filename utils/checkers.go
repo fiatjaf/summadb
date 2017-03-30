@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	"github.com/kr/pretty"
 	check "gopkg.in/check.v1"
@@ -72,4 +73,27 @@ func (checker *jsonEqualsChecker) Check(params []interface{}, names []string) (r
 	json.Unmarshal(p2, &b)
 
 	return reflect.DeepEqual(a, b), ""
+}
+
+// --------------------------------------------------------------------
+// Startswith checker.
+
+type startsWithChecker struct {
+	*check.CheckerInfo
+}
+
+/* checks if the first argument has the second as its prefix. */
+
+var StartsWith check.Checker = &startsWithChecker{
+	&check.CheckerInfo{
+		Name:   "StartsWith",
+		Params: []string{"string", "prefix"},
+	},
+}
+
+func (checker *startsWithChecker) Check(params []interface{}, names []string) (result bool, e string) {
+	s := params[0].(string)
+	prf := params[1].(string)
+
+	return strings.HasPrefix(s, prf), ""
 }
