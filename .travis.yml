@@ -1,0 +1,13 @@
+language: go
+go:
+  - tip
+sudo: false
+install:
+  - go get github.com/fiatjaf/goleveldown
+  - go get github.com/fiatjaf/levelup
+  - go get github.com/fiatjaf/levelup/stringlevelup
+  - go get github.com/kr/pretty
+  - go get github.com/spf13/viper
+  - go get github.com/yuin/gopher-lua
+  - go get gopkg.in/check.v1
+script: for dir in `find . -type d ! -path './.git*'`; do echo $dir; cd $dir; go test; cd -; done
