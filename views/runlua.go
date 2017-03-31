@@ -6,7 +6,7 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
-func View(code string, t types.Tree) ([]EmittedRow, error) {
+func Map(code string, t types.Tree) ([]EmittedRow, error) {
 	L := lua.NewState()
 	defer L.Close()
 

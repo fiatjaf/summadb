@@ -52,19 +52,19 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	})
 
 	c.Assert(
-		treeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": false}`),
+		treeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`),
 		DeepEquals,
 		types.Tree{
 			Leaf:     types.NumberLeaf(12),
 			Rev:      "2-oweqwe",
-			View:     "emit(1, 2)",
+			Map:      "emit(1, 2)",
 			Deleted:  false,
 			Branches: types.Branches{},
 		},
 	)
 
 	c.Assert(
-		treeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
+		treeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
 		DeepEquals,
 		types.Tree{
 			Rev: "3-s5w",
@@ -72,7 +72,7 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 				"subt": &types.Tree{
 					Deleted:  true,
 					Rev:      "2-oweqwe",
-					View:     "emit(1, 2)",
+					Map:      "emit(1, 2)",
 					Branches: types.Branches{},
 				},
 			},
@@ -126,14 +126,14 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	j, _ = (types.Tree{
 		Leaf:     types.NumberLeaf(12),
 		Rev:      "2-oweqwe",
-		View:     "emit(1, 2)",
+		Map:      "emit(1, 2)",
 		Deleted:  false,
 		Branches: types.Branches{},
 	}).MarshalJSON()
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"_val": 12, "_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": false}`,
+		`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`,
 	)
 
 	j, _ = (types.Tree{
@@ -142,7 +142,7 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 			"subt": &types.Tree{
 				Deleted:  true,
 				Rev:      "2-oweqwe",
-				View:     "emit(1, 2)",
+				Map:      "emit(1, 2)",
 				Branches: types.Branches{},
 			},
 		},
@@ -150,6 +150,6 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"subt": {"_rev": "2-oweqwe", "_view": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`,
+		`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`,
 	)
 }

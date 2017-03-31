@@ -3,13 +3,14 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 )
 
 type Tree struct {
 	Leaf
 	Branches
 	Rev     string
-	View    string
+	Map     string
 	Deleted bool
 }
 
@@ -39,8 +40,8 @@ func TreeFromInterface(v interface{}) Tree {
 		if rev, ok := val["_rev"]; ok {
 			t.Rev = rev.(string)
 		}
-		if view, ok := val["_view"]; ok {
-			t.View = view.(string)
+		if mapf, ok := val["_map"]; ok {
+			t.Map = mapf.(string)
 		}
 		if deleted, ok := val["_deleted"]; ok {
 			t.Deleted = deleted.(bool)
@@ -48,7 +49,7 @@ func TreeFromInterface(v interface{}) Tree {
 
 		delete(val, "_val")
 		delete(val, "_rev")
-		delete(val, "_view")
+		delete(val, "_map")
 		delete(val, "_deleted")
 		t.Branches = make(Branches, len(val))
 		for k, v := range val {
@@ -82,10 +83,10 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 		parts = append(parts, buffer.Bytes())
 	}
 
-	// view
-	if t.View != "" {
-		buffer := bytes.NewBufferString(`"_view":`)
-		buffer.WriteString(`"` + t.View + `"`)
+	// map
+	if t.Map != "" {
+		buffer := bytes.NewBufferString(`"_map":`)
+		buffer.WriteString(`"` + strings.Replace(t.Map, `"`, `\"`, -1) + `"`)
 		parts = append(parts, buffer.Bytes())
 	}
 
@@ -98,17 +99,17 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 
 	// all branches
 	if len(t.Branches) > 0 {
-		subtrees := make([][]byte, len(t.Branches))
+		subts := make([][]byte, len(t.Branches))
 		i := 0
 		for k, Tree := range t.Branches {
 			jsonLeaf, err := Tree.MarshalJSON()
 			if err != nil {
 				return nil, err
 			}
-			subtrees[i] = append([]byte(`"`+k+`":`), jsonLeaf...)
+			subts[i] = append([]byte(`"`+strings.Replace(k, `"`, `\"`, -1)+`":`), jsonLeaf...)
 			i++
 		}
-		joinedbranches := bytes.Join(subtrees, []byte{','})
+		joinedbranches := bytes.Join(subts, []byte{','})
 		parts = append(parts, joinedbranches)
 	}
 
@@ -118,9 +119,12 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 	return out, nil
 }
 
-func (t Tree) Recurse(p Path, handle func(Path, Leaf)) {
-	handle(p, t.Leaf)
-	for k, t := range t.Branches {
-		t.Recurse(append(p, k), handle)
+func (t Tree) Recurse(p Path, handle func(Path, Leaf, Tree) bool) {
+	proceed := handle(p, t.Leaf, t)
+	if proceed {
+		for key, t := range t.Branches {
+			deeppath := append(p, key)
+			t.Recurse(deeppath, handle)
+		}
 	}
 }

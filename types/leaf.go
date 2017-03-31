@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -33,7 +34,7 @@ func (l Leaf) Bool() bool      { return l.bool }
 func (l Leaf) MarshalJSON() ([]byte, error) {
 	switch l.Kind {
 	case STRING:
-		return []byte(`"` + l.string + `"`), nil
+		return []byte(`"` + strings.Replace(l.string, `"`, `\"`, -1) + `"`), nil
 	case NUMBER:
 		return []byte(strconv.FormatFloat(l.float64, 'f', -1, 32)), nil
 	case BOOL:

@@ -16,8 +16,8 @@ type RunLuaSuite struct{}
 
 var _ = Suite(&RunLuaSuite{})
 
-func (s *RunLuaSuite) TestRunView(c *C) {
-	emitted, err := View(`
+func (s *RunLuaSuite) TestRunMap(c *C) {
+	emitted, err := Map(`
 emit("x", {b="name"})
 emit("y", {a=3, 4, 3, b=false, 12, "ss", {xx="xx"}})
 emit("z", 23)
@@ -42,7 +42,7 @@ emit("r", null)
 		EmittedRow{ToIndexable("r"), nil},
 	})
 
-	emitted, err = View(`
+	emitted, err = Map(`
 emit(doc.name._val, string.len(doc.name._val))
     `, types.Tree{
 		Branches: types.Branches{
