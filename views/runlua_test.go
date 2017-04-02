@@ -1,4 +1,4 @@
-package runlua
+package views
 
 import (
 	"testing"

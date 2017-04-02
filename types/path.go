@@ -57,8 +57,10 @@ func (p Path) Last() string {
 	}
 	return p[size-1]
 }
-func (p Path) Special() bool        { return strings.HasPrefix(p.Last(), "_") }
-func (p Path) Leaf() bool           { return !p.Special() }
+func (p Path) Special() bool { return strings.HasPrefix(p.Last(), "_") }
+func (p Path) Leaf() bool    { return !p.Special() }
+func (p Path) Mapped() bool  { return p.Parent().Last() == "@map" }
+
 func (p1 Path) Equals(p2 Path) bool { return p1.Join() == p2.Join() }
 func (p Path) Copy() Path {
 	var newpath Path

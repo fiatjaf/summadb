@@ -27,9 +27,10 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	for ; iter.Valid(); iter.Next() {
 		path := types.ParsePath(iter.Key())
 
-		if path.Last() == "_rev" {
+		switch path.Last() {
+		case "_rev":
 			revsToBump[path.Parent().Join()] = iter.Value()
-		} else {
+		default:
 			// drop the value at this path (it doesn't matter,
 			// we're deleting everything besides _rev and _deleted)
 			ops = append(ops, slu.Del(path.Join()))
@@ -49,6 +50,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		son = parent
 	}
 
+	mapfUpdated := make(map[string]types.Path)
 	t.Recurse(p, func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		if t.Deleted {
 			proceed = true
@@ -69,12 +71,19 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			// save the map function if provided
 			if t.Map != "" {
 				ops = append(ops, slu.Put(p.Child("_map").Join(), t.Map))
+
+				// trigger map computations for all direct children in this key
+				mapfUpdated[t.Map] = p
 			}
 
 			proceed = true
 			return
 		}
 	})
+
+	for mapf, p := range mapfUpdated {
+		defer db.triggerChildrenMapUpdates(mapf, p)
+	}
 
 	// bump revs
 	for leafpath, oldrev := range revsToBump {

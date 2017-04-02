@@ -20,9 +20,9 @@ type DatabaseSuite struct{}
 var _ = Suite(&DatabaseSuite{})
 
 func (s *DatabaseSuite) TestBasic(c *C) {
-	db := database.Open("/tmp/summadb-test-database")
+	db := database.Open("/tmp/summadb-test-basics")
 	db.Erase()
-	db = database.Open("/tmp/summadb-test-database")
+	db = database.Open("/tmp/summadb-test-basics")
 
 	// insert a tree
 	err = db.Set(types.Path{"fruits"}, types.Tree{

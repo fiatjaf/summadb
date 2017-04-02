@@ -123,7 +123,7 @@ func (t Tree) Recurse(p Path, handle func(Path, Leaf, Tree) bool) {
 	proceed := handle(p, t.Leaf, t)
 	if proceed {
 		for key, t := range t.Branches {
-			deeppath := append(p, key)
+			deeppath := p.Child(key)
 			t.Recurse(deeppath, handle)
 		}
 	}

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -20,7 +21,7 @@ func collationIndex(x interface{}) byte {
 	switch x.(type) {
 	case bool:
 		return '2'
-	case float64:
+	case float64, int:
 		return '3'
 	case string:
 		return '4'
@@ -29,7 +30,7 @@ func collationIndex(x interface{}) byte {
 	case map[interface{}]interface{}:
 		return '6'
 	default:
-		panic("collationIndex does not work with this type.")
+		panic("collationIndex does not work with the type " + reflect.TypeOf(x).Name())
 	}
 }
 
@@ -43,6 +44,8 @@ func indexify(key interface{}) (result []byte) {
 		}
 	case float64:
 		return numToIndexable(k)
+	case int:
+		return numToIndexable(float64(k))
 	case string:
 		return bytes.Replace(
 			bytes.Replace(
@@ -63,7 +66,7 @@ func indexify(key interface{}) (result []byte) {
 		}
 		return result
 	}
-	panic("indexify does not work with this type.")
+	panic("indexify does not work with the type " + reflect.TypeOf(key).Name())
 }
 
 func numToIndexable(num float64) (result []byte) {
@@ -73,7 +76,7 @@ func numToIndexable(num float64) (result []byte) {
 
 	// convert number to exponential format for easier and
 	// more succinct string sorting
-	expFormat := strings.Split(strconv.FormatFloat(num, 'e', -1, 32), "e+")
+	expFormat := strings.Split(strconv.FormatFloat(num, 'e', -1, 64), "e+")
 	magnitude, _ := strconv.Atoi(expFormat[1])
 
 	neg := num < 0
@@ -100,7 +103,7 @@ func numToIndexable(num float64) (result []byte) {
 		factor = 10 - factor
 	}
 
-	factorStr := strconv.FormatFloat(factor, 'f', 20, 32)
+	factorStr := strconv.FormatFloat(factor, 'f', -1, 64)
 
 	// strip zeros from the end
 	factorStr = strings.TrimRight(factorStr, "0.")

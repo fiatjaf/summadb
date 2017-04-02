@@ -27,7 +27,6 @@ func (s *CollateSuite) TestBasic(c *C) {
 	// and slices and maps more specific than []interface{}, map[interface{}]interface{}
 	//   are also forbidden.
 	c.Assert(func() { indexify([]string{"xiii"}) }, PanicMatches, ".*does not work.*")
-	c.Assert(func() { indexify(18) }, PanicMatches, ".*does not work.*")
 	c.Assert(func() { ToIndexable([]float64{37.23, 16.6, 12}) }, PanicMatches, ".*does not work.*")
 	c.Assert(func() { ToIndexable(map[string]interface{}{"xi": "lascou"}) }, PanicMatches, ".*does not work.*")
 }
