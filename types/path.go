@@ -49,7 +49,7 @@ func (p Path) Parent() Path {
 	}
 	return p[:size-1]
 }
-func (p Path) Child(s string) Path { return append(p, s) }
+func (p Path) Child(s string) Path { return append(p.Copy(), s) }
 func (p Path) Last() string {
 	size := len(p)
 	if size == 0 {

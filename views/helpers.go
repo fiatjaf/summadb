@@ -5,28 +5,6 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
-// func lvalueToTree(lvalue lua.LValue) types.Tree {
-// 	t := types.NewTree()
-//
-// 	switch value := lvalue.(type) {
-// 	case *lua.LTable:
-// 		array := toArray(value)
-// 		if array != nil {
-// 			for i, v := range array {
-// 				key := strconv.Itoa(i)
-// 				t.Branches[key] = types.TreeFromInterface(v)
-// 			}
-// 		} else {
-// 			value.ForEach(func(k lua.LValue, v lua.LValue) {
-// 				key := lua.LVAsString(k)
-// 				t.Branches[key] = lvalueToTree(v)
-// 			})
-// 		}
-// 	default:
-// 		t.Leaf = types.LeafFromInterface(lvalueToInterface(lvalue))
-// 	}
-// }
-
 func lvalueToInterface(lvalue lua.LValue) interface{} {
 	switch value := lvalue.(type) {
 	case *lua.LTable:

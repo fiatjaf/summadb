@@ -19,17 +19,17 @@ type TypesSuite struct{}
 var _ = Suite(&TypesSuite{})
 
 func (s *TypesSuite) TestUnmarshalJSON(c *C) {
-	c.Assert(treeFromJSON(`{"a": "b"}`), DeepEquals, types.Tree{
+	c.Assert(types.TreeFromJSON(`{"a": "b"}`), DeepEquals, types.Tree{
 		Branches: types.Branches{
 			"a": &types.Tree{
 				Leaf: types.StringLeaf("b"),
 			},
 		},
 	})
-	c.Assert(treeFromJSON(`92`), DeepEquals, types.Tree{
+	c.Assert(types.TreeFromJSON(`92`), DeepEquals, types.Tree{
 		Leaf: types.NumberLeaf(92),
 	})
-	c.Assert(treeFromJSON(`{"a": {"f": false, "n": null, "m": {"t": true}}}`), DeepEquals, types.Tree{
+	c.Assert(types.TreeFromJSON(`{"a": {"f": false, "n": null, "m": {"t": true}}}`), DeepEquals, types.Tree{
 		Branches: types.Branches{
 			"a": &types.Tree{
 				Branches: types.Branches{
@@ -52,7 +52,7 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	})
 
 	c.Assert(
-		treeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`),
+		types.TreeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`),
 		DeepEquals,
 		types.Tree{
 			Leaf:     types.NumberLeaf(12),
@@ -64,7 +64,7 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	)
 
 	c.Assert(
-		treeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
+		types.TreeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
 		DeepEquals,
 		types.Tree{
 			Rev: "3-s5w",

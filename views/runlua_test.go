@@ -19,41 +19,38 @@ var _ = Suite(&RunLuaSuite{})
 func (s *RunLuaSuite) TestRunMap(c *C) {
 	emitted, err := Map(`
 emit("x", {b="name"})
-emit("y", {a=3, 4, 3, b=false, 12, "ss", {xx="xx"}})
-emit("z", 23)
-emit({"w", "m"}, "dabliuême")
-emit({"boolean", true, 0}, false)
+emit("y", {a=3, l={xx="xx"}})
+emit("z", 23, 18)
+emit("w", "m", "dabliuême")
 emit("r", null)
-    `, types.Tree{})
+    `, types.Tree{}, "")
 
 	c.Assert(err, IsNil)
 	c.Assert(emitted, DeeplyEquals, []EmittedRow{
-		EmittedRow{ToIndexable("x"), map[string]interface{}{"b": "name"}},
-		EmittedRow{ToIndexable("y"), []interface{}{
-			float64(4),
-			float64(3),
-			float64(12),
-			"ss",
-			map[string]interface{}{"xx": "xx"},
-		}},
-		EmittedRow{ToIndexable("z"), float64(23)},
-		EmittedRow{ToIndexable([]interface{}{"w", "m"}), "dabliuême"},
-		EmittedRow{ToIndexable([]interface{}{"boolean", true, float64(0)}), false},
-		EmittedRow{ToIndexable("r"), nil},
+		EmittedRow{types.Path{"x"}, types.TreeFromJSON(`{"b": "name"}`)},
+		EmittedRow{types.Path{"y"}, types.TreeFromJSON(`{
+            "a": 3,
+            "l": {
+              "xx": "xx"
+            }
+		}`)},
+		EmittedRow{types.Path{"z", "23"}, types.TreeFromJSON(`18`)},
+		EmittedRow{types.Path{"w", "m"}, types.TreeFromJSON(`"dabliuême"`)},
+		EmittedRow{types.Path{"r"}, types.TreeFromJSON(`1`)},
 	})
 
 	emitted, err = Map(`
-emit(doc.name._val, string.len(doc.name._val))
+emit('name-lengths', doc.name._val, string.len(doc.name._val))
     `, types.Tree{
 		Branches: types.Branches{
 			"name": &types.Tree{
 				Leaf: types.StringLeaf("mariazinha"),
 			},
 		},
-	})
+	}, "")
 
 	c.Assert(err, IsNil)
 	c.Assert(emitted, DeeplyEquals, []EmittedRow{
-		EmittedRow{ToIndexable("mariazinha"), float64(10)},
+		EmittedRow{types.Path{"name-lengths", "mariazinha"}, types.TreeFromJSON(`10`)},
 	})
 }

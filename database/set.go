@@ -23,6 +23,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	})
 	defer iter.Release()
 
+	// store all revs to bump in a map and bump the all at once
 	revsToBump := make(map[string]string)
 	for ; iter.Valid(); iter.Next() {
 		path := types.ParsePath(iter.Key())
@@ -81,10 +82,6 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		}
 	})
 
-	for mapf, p := range mapfUpdated {
-		defer db.triggerChildrenMapUpdates(mapf, p)
-	}
-
 	// bump revs
 	for leafpath, oldrev := range revsToBump {
 		p := types.ParsePath(leafpath)
@@ -92,5 +89,15 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		ops = append(ops, slu.Put(p.Child("_rev").Join(), newrev))
 	}
 
-	return db.Batch(ops)
+	// write
+	err = db.Batch(ops)
+
+	if err == nil {
+		for mapf, p := range mapfUpdated {
+			go db.triggerChildrenMapUpdates(mapf, p)
+		}
+		go db.triggerAncestorMapFunctions(p)
+	}
+
+	return err
 }
