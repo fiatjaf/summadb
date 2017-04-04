@@ -11,10 +11,14 @@ import (
 func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	var ops []levelup.Operation
 
+	// check if the path is valid for mutating
+	if !p.Valid() {
+		return errors.New("cannot set on invalid path: " + p.Join())
+	}
+
 	// check if the toplevel rev matches and cancel everything if it doesn't
-	toplevelrev, err := db.Get(p.Child("_rev").Join())
-	if (toplevelrev != t.Rev) && (err != levelup.NotFound && t.Rev != "") {
-		return errors.New("mismatching revs: " + toplevelrev + " and " + t.Rev)
+	if err := db.checkRev(t.Rev, p); err != nil {
+		return err
 	}
 
 	iter := db.ReadRange(&slu.RangeOpts{
@@ -23,7 +27,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	})
 	defer iter.Release()
 
-	// store all revs to bump in a map and bump the all at once
+	// store all revs to bump in a map and bump them all at once
 	revsToBump := make(map[string]string)
 	for ; iter.Valid(); iter.Next() {
 		path := types.ParsePath(iter.Key())
@@ -51,7 +55,9 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		son = parent
 	}
 
+	// store all updated map functions so we can trigger computations
 	mapfUpdated := make(map[string]types.Path)
+
 	t.Recurse(p, func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		if t.Deleted {
 			proceed = true
@@ -71,7 +77,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 
 			// save the map function if provided
 			if t.Map != "" {
-				ops = append(ops, slu.Put(p.Child("_map").Join(), t.Map))
+				ops = append(ops, slu.Put(p.Child("@map").Join(), t.Map))
 
 				// trigger map computations for all direct children in this key
 				mapfUpdated[t.Map] = p

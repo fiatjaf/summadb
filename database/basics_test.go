@@ -47,6 +47,7 @@ func (s *DatabaseSuite) TestBasic(c *C) {
 
 	// change a property inside a tree
 	err = db.Set(types.Path{"fruits", "banana", "color"}, types.Tree{
+		Rev:  treeread.Branches["banana"].Branches["color"].Rev,
 		Leaf: types.StringLeaf("yellow"),
 	})
 	c.Assert(err, IsNil)
@@ -96,6 +97,7 @@ func (s *DatabaseSuite) TestBasic(c *C) {
 
 	// mark some paths as deleted
 	err = db.Set(types.Path{"fruits", "tangerine"}, types.Tree{
+		Rev:     treeread.Branches["fruits"].Branches["tangerine"].Rev,
 		Deleted: true,
 		Branches: types.Branches{
 			"color":   &types.Tree{Deleted: true},
@@ -142,4 +144,69 @@ func (s *DatabaseSuite) TestBasic(c *C) {
 	c.Assert(treeread.Branches["tangerine"].Branches["tasty"].Deleted, Equals, true)
 	c.Assert(treeread.Branches["tangerine"].Branches["comment"].Leaf, DeepEquals, types.Leaf{})
 	c.Assert(treeread.Branches["tangerine"].Branches["tasty"].Leaf, DeepEquals, types.Leaf{})
+}
+
+func (s *DatabaseSuite) TestPatch(c *C) {
+	db := Open("/tmp/summadb-test-patch")
+	db.Erase()
+	db = Open("/tmp/summadb-test-patch")
+
+	// insert things by patching
+	err = db.Patch([]PatchOp{
+		PatchOp{types.Path{"gods", "1", "name"}, "", types.StringLeaf("zeus")},
+		PatchOp{types.Path{"gods", "1", "son"}, "", types.StringLeaf("heracles")},
+		PatchOp{types.Path{"gods", "2", "name"}, "", types.StringLeaf("odin")},
+		PatchOp{types.Path{"gods", "2", "son"}, "", types.StringLeaf("thor")},
+	})
+	c.Assert(err, IsNil)
+
+	treeread, err := db.Read(types.Path{"gods"})
+	c.Assert(err, IsNil)
+	c.Assert(treeread.Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["1"].Branches["name"].Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["2"].Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["2"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("odin"))
+
+	// fail to patch with wrong rev
+	err = db.Patch([]PatchOp{
+		PatchOp{types.Path{"gods", "1", "name"}, "1-wrong", types.StringLeaf("hades")},
+	})
+	c.Assert(err, Not(IsNil))
+
+	// patch some properties
+	err = db.Patch([]PatchOp{
+		PatchOp{types.Path{"gods", "1", "power"}, "", types.StringLeaf("thunder")},
+		PatchOp{types.Path{"gods", "2", "power"}, "", types.StringLeaf("battle")},
+	})
+	c.Assert(err, IsNil)
+
+	treeread, err = db.Read(types.Path{})
+	c.Assert(err, IsNil)
+	c.Assert(treeread.Rev, StartsWith, "2-")
+	c.Assert(treeread.Branches["gods"].Rev, StartsWith, "2-")
+	c.Assert(treeread.Branches["gods"].Branches["1"].Branches["power"].Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["gods"].Branches["2"].Branches["power"].Leaf, DeepEquals, types.StringLeaf("battle"))
+
+	// patch with null to delete
+	err = db.Patch([]PatchOp{
+		PatchOp{types.Path{"gods", "1", "son"}, "", types.NullLeaf()},
+		PatchOp{types.Path{"gods", "1", "son", "name"}, "", types.StringLeaf("thor")},
+	})
+	c.Assert(err, Not(IsNil) /* fails because of the rev */)
+	err = db.Patch([]PatchOp{ /* try again */
+		PatchOp{types.Path{"gods", "1", "son"}, treeread.Branches["gods"].Branches["1"].Branches["son"].Rev, types.NullLeaf()},
+		PatchOp{types.Path{"gods", "1", "son", "name"}, "", types.StringLeaf("thor")},
+	})
+	c.Assert(err, IsNil)
+
+	treeread, err = db.Read(types.Path{"gods"})
+	c.Assert(err, IsNil)
+	c.Assert(treeread.Rev, StartsWith, "3-")
+	c.Assert(treeread.Branches["1"].Branches["power"].Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["2"].Branches["power"].Leaf, DeepEquals, types.StringLeaf("battle"))
+	c.Assert(treeread.Branches["1"].Branches["son"].Rev, StartsWith, "2-")
+	c.Assert(treeread.Branches["1"].Branches["son"].Leaf, DeepEquals, types.NullLeaf())
+	c.Assert(treeread.Branches["1"].Branches["son"].Deleted, Equals, true)
+	c.Assert(treeread.Branches["1"].Branches["son"].Branches["name"].Rev, StartsWith, "1-")
+	c.Assert(treeread.Branches["1"].Branches["son"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("thor"))
 }

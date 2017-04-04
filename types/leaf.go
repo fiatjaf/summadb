@@ -8,11 +8,10 @@ import (
 )
 
 const (
-	STRING    = 's'
-	NUMBER    = 'n'
-	BOOL      = 'b'
-	NULL      = 'u'
-	UNDEFINED = 0
+	STRING = 's'
+	NUMBER = 'n'
+	BOOL   = 'b'
+	NULL   = 0
 )
 
 type Leaf struct {

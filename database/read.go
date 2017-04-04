@@ -43,7 +43,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
 				switch key {
 				case "_rev":
 					currentbranch.Rev = value
-				case "_map":
+				case "@map":
 					currentbranch.Map = value
 				case "_deleted":
 					currentbranch.Deleted = true

@@ -15,7 +15,7 @@ func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 	// look through ancestors for map functions
 	son := p.Copy()
 	for parent := son.Parent(); !parent.Equals(son); parent = son.Parent() {
-		mapf, _ := db.Get(parent.Child("_map").Join())
+		mapf, _ := db.Get(parent.Child("@map").Join())
 		if mapf != "" {
 			// grab document
 			tree, err := db.Read(son)
@@ -140,11 +140,6 @@ func (db *SummaDB) saveEmittedRow(base types.Path, relpath types.Path, value typ
 	rowpath := append(base.Child("@map"), relpath...)
 	value.Recurse(rowpath,
 		func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
-			if leaf.Kind == types.UNDEFINED {
-				proceed = true
-				return
-			}
-
 			jsonvalue, _ := leaf.MarshalJSON()
 			ops = append(ops, slu.Put(p.Join(), string(jsonvalue)))
 			proceed = true

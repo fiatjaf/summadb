@@ -59,10 +59,24 @@ func (p Path) Last() string {
 }
 func (p Path) Special() bool { return strings.HasPrefix(p.Last(), "_") }
 func (p Path) Leaf() bool    { return !p.Special() }
-func (p Path) Mapped() bool  { return p.Parent().Last() == "@map" }
 
 func (p1 Path) Equals(p2 Path) bool { return p1.Join() == p2.Join() }
 func (p Path) Copy() Path {
 	var newpath Path
 	return append(newpath, p...)
+}
+
+func (p Path) Valid() bool {
+	for i, key := range p {
+		if key == "" {
+			return false
+		}
+		if key[0] == '_' {
+			return false
+		}
+		if key[0] == '@' && i != len(p)-1 {
+			return false
+		}
+	}
+	return true
 }

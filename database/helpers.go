@@ -1,10 +1,15 @@
 package database
 
 import (
+	"errors"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fiatjaf/levelup"
+	"github.com/fiatjaf/summadb/types"
+	"github.com/mgutz/logxi/v1"
 )
 
 func bumpRev(rev string) string {
@@ -38,4 +43,22 @@ func randomString(n int) string {
 		remain--
 	}
 	return string(b)
+}
+
+func (db *SummaDB) checkRev(providedrev string, p types.Path) error {
+	currentrev, err := db.Get(p.Child("_rev").Join())
+	if err == levelup.NotFound && providedrev == "" {
+		return nil
+	}
+	if err != nil {
+		log.Error("failed to fetch rev for checking.",
+			"path", p,
+			"provided", providedrev)
+		return err
+	}
+	if currentrev == providedrev {
+		return nil
+	}
+	return errors.New(
+		"mismatching revs at " + p.Join() + ". current: " + currentrev + "; provided: " + providedrev)
 }

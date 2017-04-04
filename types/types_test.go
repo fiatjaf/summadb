@@ -51,7 +51,7 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	})
 
 	c.Assert(
-		TreeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`),
+		TreeFromJSON(`{"_val": 12, "_rev": "2-oweqwe", "@map": "emit(1, 2)", "_deleted": false}`),
 		DeepEquals,
 		Tree{
 			Leaf:     NumberLeaf(12),
@@ -63,7 +63,7 @@ func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	)
 
 	c.Assert(
-		TreeFromJSON(`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
+		TreeFromJSON(`{"subt": {"_rev": "2-oweqwe", "@map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`),
 		DeepEquals,
 		Tree{
 			Rev: "3-s5w",
@@ -132,7 +132,7 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"_val": 12, "_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": false}`,
+		`{"_val": 12, "_rev": "2-oweqwe", "@map": "emit(1, 2)", "_deleted": false}`,
 	)
 
 	j, _ = (Tree{
@@ -149,7 +149,7 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"subt": {"_rev": "2-oweqwe", "_map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`,
+		`{"subt": {"_rev": "2-oweqwe", "@map": "emit(1, 2)", "_deleted": true}, "_rev": "3-s5w"}`,
 	)
 }
 

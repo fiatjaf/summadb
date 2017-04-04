@@ -11,10 +11,14 @@ import (
 func (db *SummaDB) Delete(p types.Path, rev string) error {
 	var ops []levelup.Operation
 
+	// check if the path is valid for mutating
+	if !p.Valid() {
+		return errors.New("cannot delete invalid path: " + p.Join())
+	}
+
 	// check if the toplevel rev matches and cancel everything if it doesn't
-	toplevelrev, err := db.Get(p.Child("_rev").Join())
-	if (toplevelrev != rev) && (err != levelup.NotFound && rev != "") {
-		return errors.New("mismatching revs: " + toplevelrev + " and " + rev)
+	if err := db.checkRev(rev, p); err != nil {
+		return err
 	}
 
 	iter := db.ReadRange(&slu.RangeOpts{
