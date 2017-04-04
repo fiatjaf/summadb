@@ -1,9 +1,8 @@
-package test
+package database
 
 import (
 	"testing"
 
-	"github.com/fiatjaf/summadb/database"
 	"github.com/fiatjaf/summadb/types"
 	. "github.com/fiatjaf/summadb/utils"
 	. "gopkg.in/check.v1"
@@ -20,9 +19,9 @@ type DatabaseSuite struct{}
 var _ = Suite(&DatabaseSuite{})
 
 func (s *DatabaseSuite) TestBasic(c *C) {
-	db := database.Open("/tmp/summadb-test-basics")
+	db := Open("/tmp/summadb-test-basics")
 	db.Erase()
-	db = database.Open("/tmp/summadb-test-basics")
+	db = Open("/tmp/summadb-test-basics")
 
 	// insert a tree
 	err = db.Set(types.Path{"fruits"}, types.Tree{

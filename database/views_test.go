@@ -1,18 +1,17 @@
-package test
+package database
 
 import (
 	"time"
 
-	"github.com/fiatjaf/summadb/database"
 	"github.com/fiatjaf/summadb/types"
 	. "github.com/fiatjaf/summadb/utils"
 	. "gopkg.in/check.v1"
 )
 
 func (s *DatabaseSuite) TestViews(c *C) {
-	db := database.Open("/tmp/summadb-test-views")
+	db := Open("/tmp/summadb-test-views")
 	db.Erase()
-	db = database.Open("/tmp/summadb-test-views")
+	db = Open("/tmp/summadb-test-views")
 
 	// insert a tree with a map function
 	err = db.Set(types.Path{"food"}, types.Tree{
