@@ -6,13 +6,13 @@ import (
 )
 
 func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
+	tree := types.NewTree()
+
 	iter := db.ReadRange(&slu.RangeOpts{
 		Start: sourcepath.Join(),
 		End:   sourcepath.Join() + "~~~",
 	})
 	defer iter.Release()
-
-	tree := types.NewTree()
 	for ; iter.Valid(); iter.Next() {
 		if err = iter.Error(); err != nil {
 			return

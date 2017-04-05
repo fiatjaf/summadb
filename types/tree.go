@@ -47,6 +47,7 @@ func TreeFromInterface(v interface{}) Tree {
 			t.Deleted = deleted.(bool)
 		}
 
+		delete(val, "_id")
 		delete(val, "_val")
 		delete(val, "_rev")
 		delete(val, "@map")

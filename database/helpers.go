@@ -62,3 +62,8 @@ func (db *SummaDB) checkRev(providedrev string, p types.Path) error {
 	return errors.New(
 		"mismatching revs at " + p.Join() + ". current: " + currentrev + "; provided: " + providedrev)
 }
+
+type mapfupdated struct {
+	path types.Path
+	mapf string
+}

@@ -21,14 +21,14 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		return err
 	}
 
+	// store all revs to bump in a map and bump them all at once
+	revsToBump := make(map[string]string)
+
 	iter := db.ReadRange(&slu.RangeOpts{
 		Start: p.Join(),
 		End:   p.Join() + "~~~",
 	})
 	defer iter.Release()
-
-	// store all revs to bump in a map and bump them all at once
-	revsToBump := make(map[string]string)
 	for ; iter.Valid(); iter.Next() {
 		path := types.ParsePath(iter.Key())
 
@@ -56,9 +56,9 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	}
 
 	// store all updated map functions so we can trigger computations
-	mapfUpdated := make(map[string]types.Path)
+	var mapfUpdated []mapfupdated
 
-	t.Recurse(p, func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
+	t.Recurse(p, func(path types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		if t.Deleted {
 			// ignore
 			proceed = true
@@ -66,22 +66,22 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 		} else {
 			// the leaf value
 			jsonvalue, _ := leaf.MarshalJSON()
-			ops = append(ops, slu.Put(p.Join(), string(jsonvalue)))
+			ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
 
 			// mark the rev to bump (from 0, if this path wasn't already on the database)
-			if _, exists := revsToBump[p.Join()]; !exists {
-				revsToBump[p.Join()] = "0-"
+			if _, exists := revsToBump[path.Join()]; !exists {
+				revsToBump[path.Join()] = "0-"
 			}
 
 			// undelete
-			ops = append(ops, slu.Del(p.Child("_deleted").Join()))
+			ops = append(ops, slu.Del(path.Child("_deleted").Join()))
 
 			// save the map function if provided
 			if t.Map != "" {
-				ops = append(ops, slu.Put(p.Child("@map").Join(), t.Map))
+				ops = append(ops, slu.Put(path.Child("@map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
-				mapfUpdated[t.Map] = p
+				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})
 			}
 
 			proceed = true
@@ -100,8 +100,8 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	err = db.Batch(ops)
 
 	if err == nil {
-		for mapf, p := range mapfUpdated {
-			go db.triggerChildrenMapUpdates(mapf, p)
+		for _, update := range mapfUpdated {
+			go db.triggerChildrenMapUpdates(update.mapf, update.path)
 		}
 		go db.triggerAncestorMapFunctions(p)
 	}

@@ -21,14 +21,16 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 		return err
 	}
 
+	// store all revs to bump in a map and bump them all at once
+	revsToBump := make(map[string]string)
+
+	alreadyDeleted := make(map[string]bool)
+
 	iter := db.ReadRange(&slu.RangeOpts{
 		Start: p.Join(),
 		End:   p.Join() + "~~~",
 	})
 	defer iter.Release()
-
-	alreadyDeleted := make(map[string]bool)
-	revsToBump := make(map[string]string)
 	for ; iter.Valid(); iter.Next() {
 		path := types.ParsePath(iter.Key())
 
@@ -72,5 +74,18 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 		ops = append(ops, slu.Put(p.Child("_rev").Join(), newrev))
 	}
 
-	return db.Batch(ops)
+	// write
+	err = db.Batch(ops)
+
+	if err == nil {
+		// if a map is being deleted, trigger a mapf update
+		// no value is going to be emitted, since all child rows are deleted
+		// but we need to clear everything at @map/
+		go db.triggerChildrenMapUpdates("", p)
+
+		// since this is a general subtree modification
+		go db.triggerAncestorMapFunctions(p)
+	}
+
+	return err
 }

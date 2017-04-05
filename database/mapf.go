@@ -1,7 +1,6 @@
 package database
 
 import (
-	"path"
 	"strings"
 
 	"github.com/fiatjaf/levelup"
@@ -10,6 +9,8 @@ import (
 	"github.com/fiatjaf/summadb/views"
 	"github.com/mgutz/logxi/v1"
 )
+
+const SEP = "^!~@!"
 
 func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 	// look through ancestors for map functions
@@ -46,9 +47,17 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 		return
 	}
 
-	for docid, doc := range tree.Branches {
-		emittedrows := runMap(mapf, *doc, docid)
-		db.updateEmittedRowsInTheDatabase(p, docid, emittedrows)
+	// mapf will be an empty string if it has been deleted.
+	if mapf == "" {
+		// in this case we do an 'update' with no emitted rows. that will clean the map results.
+		for docid, _ := range tree.Branches {
+			db.updateEmittedRowsInTheDatabase(p, docid, []views.EmittedRow{})
+		}
+	} else {
+		for docid, doc := range tree.Branches {
+			emittedrows := runMap(mapf, *doc, docid)
+			db.updateEmittedRowsInTheDatabase(p, docid, emittedrows)
+		}
 	}
 }
 
@@ -63,9 +72,7 @@ func runMap(mapf string, tree types.Tree, key string) []views.EmittedRow {
 	return emittedrows
 }
 
-func (db *SummaDB) updateEmittedRowsInTheDatabase(
-	p types.Path, docid string, emittedrows []views.EmittedRow) {
-
+func (db *SummaDB) updateEmittedRowsInTheDatabase(p types.Path, docid string, emittedrows []views.EmittedRow) {
 	allrelativepaths := make([]string, len(emittedrows))
 
 	for i, row := range emittedrows {
@@ -84,7 +91,11 @@ func (db *SummaDB) updateEmittedRowsInTheDatabase(
 	}
 
 	// remove all these emitted rows from the database
-	for _, relativepath := range strings.Split(prevkeys, "^!~@!") {
+	for _, relativepath := range strings.Split(prevkeys, SEP) {
+		if relativepath == "" {
+			continue
+		}
+
 		err = db.deleteEmittedRow(p, types.ParsePath(relativepath))
 		if err != nil {
 			log.Error("unexpected error when deleting emitted row from the database.",
@@ -95,7 +106,7 @@ func (db *SummaDB) updateEmittedRowsInTheDatabase(
 
 	// store keys emitted by this doc so we can delete/update them later
 	if len(emittedrows) > 0 {
-		err = db.local.Put(localmetakey, strings.Join(allrelativepaths, "^!~@!"))
+		err = db.local.Put(localmetakey, strings.Join(allrelativepaths, SEP))
 		if err != nil {
 			log.Error("unexpected error when storing list of emitted rows",
 				"err", err,
@@ -129,7 +140,7 @@ func (db *SummaDB) deleteEmittedRow(base types.Path, relpath types.Path) error {
 	defer iter.Release()
 
 	for ; iter.Valid(); iter.Next() {
-		ops = append(ops, slu.Del(path.Join()))
+		ops = append(ops, slu.Del(iter.Key()))
 	}
 	return db.Batch(ops)
 }
@@ -140,8 +151,10 @@ func (db *SummaDB) saveEmittedRow(base types.Path, relpath types.Path, value typ
 	rowpath := append(base.Child("@map"), relpath...)
 	value.Recurse(rowpath,
 		func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
-			jsonvalue, _ := leaf.MarshalJSON()
-			ops = append(ops, slu.Put(p.Join(), string(jsonvalue)))
+			if leaf.Kind != types.NULL {
+				jsonvalue, _ := leaf.MarshalJSON()
+				ops = append(ops, slu.Put(p.Join(), string(jsonvalue)))
+			}
 			proceed = true
 			return
 		})

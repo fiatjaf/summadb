@@ -28,15 +28,14 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 	revsToBump := make(map[string]string)
 
 	// store all updated map functions so we can trigger computations
-	var mapfUpdated []struct {
-		path types.Path
-		mapf string
-	}
+	var mapfUpdated []mapfupdated
 
 	// visit all branches of the given tree
 	t.Recurse(p, func(path types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		rev, _ := db.Get(path.Child("_rev").Join())
 		revsToBump[path.Join()] = rev
+
+		mapf, _ := db.Get(path.Child("@map").Join())
 
 		if t.Deleted {
 			// delete this leaf
@@ -44,23 +43,24 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 			ops = append(ops, slu.Put(path.Child("_deleted").Join(), "1"))
 
 			// trigger removal of @map results
-		} else if leaf.Kind != types.NULL {
-			// modify this leaf
-			jsonvalue, _ := leaf.MarshalJSON()
-			ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
-
+			if mapf != "" {
+				mapfUpdated = append(mapfUpdated, mapfupdated{path, ""})
+			}
+		} else {
 			// undelete
 			ops = append(ops, slu.Del(path.Child("_deleted").Join()))
 
-			mapf, _ := db.Get(path.Child("@map").Join())
+			if leaf.Kind != types.NULL {
+				// modify this leaf
+				jsonvalue, _ := leaf.MarshalJSON()
+				ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
+			}
+
 			if mapf != t.Map {
 				ops = append(ops, slu.Put(path.Child("@map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
-				mapfUpdated = append(mapfUpdated, struct {
-					path types.Path
-					mapf string
-				}{path, t.Map})
+				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})
 			}
 		}
 		proceed = true
