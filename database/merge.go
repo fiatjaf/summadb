@@ -40,7 +40,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 		if t.Deleted {
 			// delete this leaf
 			ops = append(ops, slu.Del(path.Join()))
-			ops = append(ops, slu.Put(path.Child("_deleted").Join(), "1"))
+			ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 
 			// trigger removal of @map results
 			if mapf != "" {
@@ -48,7 +48,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 			}
 		} else {
 			// undelete
-			ops = append(ops, slu.Del(path.Child("_deleted").Join()))
+			ops = append(ops, slu.Del(path.Child("_del").Join()))
 
 			if leaf.Kind != types.NULL {
 				// modify this leaf

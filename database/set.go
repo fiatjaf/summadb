@@ -37,12 +37,12 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			revsToBump[path.Parent().Join()] = iter.Value()
 		default:
 			// drop the value at this path (it doesn't matter,
-			// we're deleting everything besides _rev and _deleted)
+			// we're deleting everything besides _rev and _del)
 			ops = append(ops, slu.Del(path.Join()))
 
 			if path.Leaf() {
 				// mark it as deleted (will unmark later if needed)
-				ops = append(ops, slu.Put(path.Child("_deleted").Join(), "1"))
+				ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 			}
 		}
 	}
@@ -74,7 +74,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			}
 
 			// undelete
-			ops = append(ops, slu.Del(path.Child("_deleted").Join()))
+			ops = append(ops, slu.Del(path.Child("_del").Join()))
 
 			// save the map function if provided
 			if t.Map != "" {

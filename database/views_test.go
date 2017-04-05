@@ -138,7 +138,7 @@ emit('by-size', food.size._val, food)
 		Branches: types.Branches{
 			"food": &types.Tree{
 				Map: `
-                if doc.kind ~= nil and doc.kind._deleted ~= true then
+                if doc.kind ~= nil and doc.kind._del ~= true then
                   emit('categories', doc.kind._val,  true)
                 end
                 `,

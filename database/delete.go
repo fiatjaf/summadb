@@ -40,17 +40,17 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 			if _, was := alreadyDeleted[path.Parent().Join()]; !was {
 				revsToBump[path.Parent().Join()] = iter.Value()
 			}
-		case "_deleted":
+		case "_del":
 			// the path was already deleted, so we shouldn't do anything
 			alreadyDeleted[path.Parent().Join()] = true
 		default:
 			// drop the value at this path (it doesn't matter,
-			// we're deleting everything besides _rev and _deleted)
+			// we're deleting everything besides _rev and _del)
 			ops = append(ops, slu.Del(path.Join()))
 
 			if path.Leaf() {
 				// mark it as deleted
-				ops = append(ops, slu.Put(path.Child("_deleted").Join(), "1"))
+				ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 			}
 		}
 	}

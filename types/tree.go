@@ -43,7 +43,7 @@ func TreeFromInterface(v interface{}) Tree {
 		if mapf, ok := val["@map"]; ok {
 			t.Map = mapf.(string)
 		}
-		if deleted, ok := val["_deleted"]; ok {
+		if deleted, ok := val["_del"]; ok {
 			t.Deleted = deleted.(bool)
 		}
 
@@ -51,7 +51,7 @@ func TreeFromInterface(v interface{}) Tree {
 		delete(val, "_val")
 		delete(val, "_rev")
 		delete(val, "@map")
-		delete(val, "_deleted")
+		delete(val, "_del")
 		t.Branches = make(Branches, len(val))
 		for k, v := range val {
 			subt := TreeFromInterface(v)
@@ -93,7 +93,7 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 
 	// deleted
 	if t.Deleted {
-		buffer := bytes.NewBufferString(`"_deleted":`)
+		buffer := bytes.NewBufferString(`"_del":`)
 		buffer.WriteString("true")
 		parts = append(parts, buffer.Bytes())
 	}

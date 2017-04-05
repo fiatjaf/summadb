@@ -206,7 +206,7 @@ func (s *DatabaseSuite) TestMerge(c *C) {
 	c.Assert(treeread.Branches["gods"].Branches["1"].Branches["power"].Rev, StartsWith, "1-")
 	c.Assert(treeread.Branches["gods"].Branches["2"].Branches["power"].Leaf, DeepEquals, types.StringLeaf("battle"))
 
-	// merge _deleted to delete
+	// merge _del to delete
 	err = db.Merge(types.Path{"gods", "1", "son"}, types.Tree{
 		Rev:     treeread.Branches["gods"].Branches["1"].Branches["son"].Rev,
 		Deleted: true,

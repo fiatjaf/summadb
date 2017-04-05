@@ -45,7 +45,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
 					currentbranch.Rev = value
 				case "@map":
 					currentbranch.Map = value
-				case "_deleted":
+				case "_del":
 					currentbranch.Deleted = true
 				default:
 					// create a subbranch at this key
