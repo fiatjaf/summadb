@@ -13,7 +13,7 @@ func Map(code string, t types.Tree, docid string) ([]EmittedRow, error) {
 	// the 'doc'
 	doc := L.CreateTable(32, 32)
 	treeToLTable(L, doc, t)
-	doc.RawSetString("_id", lua.LString(docid))
+	doc.RawSetString("_key", lua.LString(docid))
 	L.SetGlobal("doc", doc)
 
 	// the 'emit' function

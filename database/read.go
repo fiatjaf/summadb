@@ -5,7 +5,8 @@ import (
 	"github.com/fiatjaf/summadb/types"
 )
 
-func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
+func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
+	var err error
 	tree := types.NewTree()
 
 	iter := db.ReadRange(&slu.RangeOpts{
@@ -15,7 +16,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
 	defer iter.Release()
 	for ; iter.Valid(); iter.Next() {
 		if err = iter.Error(); err != nil {
-			return
+			return types.Tree{}, err
 		}
 
 		path := types.ParsePath(iter.Key())
@@ -33,7 +34,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (t types.Tree, err error) {
 				// add the leaf here
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
-					return
+					return types.Tree{}, err
 				}
 				currentbranch.Leaf = *leaf
 			} else {

@@ -17,7 +17,7 @@ func (s *DatabaseSuite) TestViews(c *C) {
 	err = db.Set(types.Path{"food"}, types.Tree{
 		Map: `
 local food = doc
-emit('by-kind', food.kind._val, doc._id, food.name._val)
+emit('by-kind', food.kind._val, doc._key, food.name._val)
         `,
 		Branches: types.Branches{
 			"1": &types.Tree{
@@ -134,7 +134,7 @@ emit('by-size', food.size._val, food)
 	rev, _ = db.Get("_rev") // hack to get the rev
 	err = db.Merge(types.Path{}, types.Tree{
 		Rev: rev,
-		Map: `emit('categories', doc._id, true)`,
+		Map: `emit('categories', doc._key, true)`,
 		Branches: types.Branches{
 			"food": &types.Tree{
 				Map: `

@@ -12,6 +12,8 @@ type Tree struct {
 	Rev     string
 	Map     string
 	Deleted bool
+
+	Key string
 }
 
 type Branches map[string]*Tree
@@ -34,6 +36,9 @@ func TreeFromInterface(v interface{}) Tree {
 
 	switch val := v.(type) {
 	case map[string]interface{}:
+		if key, ok := val["_key"]; ok {
+			t.Key = key.(string)
+		}
 		if val, ok := val["_val"]; ok {
 			t.Leaf = LeafFromInterface(val)
 		}
@@ -47,7 +52,7 @@ func TreeFromInterface(v interface{}) Tree {
 			t.Deleted = deleted.(bool)
 		}
 
-		delete(val, "_id")
+		delete(val, "_key")
 		delete(val, "_val")
 		delete(val, "_rev")
 		delete(val, "@map")
@@ -74,6 +79,13 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 		}
 		buffer := bytes.NewBufferString(`"_val":`)
 		buffer.Write(jsonLeaf)
+		parts = append(parts, buffer.Bytes())
+	}
+
+	// key
+	if t.Key != "" {
+		buffer := bytes.NewBufferString(`"_key":`)
+		buffer.WriteString(`"` + t.Key + `"`)
 		parts = append(parts, buffer.Bytes())
 	}
 
