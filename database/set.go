@@ -60,6 +60,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 
 	t.Recurse(p, func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		if t.Deleted {
+			// ignore
 			proceed = true
 			return
 		} else {
@@ -79,7 +80,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			if t.Map != "" {
 				ops = append(ops, slu.Put(p.Child("@map").Join(), t.Map))
 
-				// trigger map computations for all direct children in this key
+				// trigger map computations for all direct children of this key
 				mapfUpdated[t.Map] = p
 			}
 

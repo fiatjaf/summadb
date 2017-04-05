@@ -146,17 +146,27 @@ func (s *DatabaseSuite) TestBasic(c *C) {
 	c.Assert(treeread.Branches["tangerine"].Branches["tasty"].Leaf, DeepEquals, types.Leaf{})
 }
 
-func (s *DatabaseSuite) TestPatch(c *C) {
-	db := Open("/tmp/summadb-test-patch")
+func (s *DatabaseSuite) TestMerge(c *C) {
+	db := Open("/tmp/summadb-test-merge")
 	db.Erase()
-	db = Open("/tmp/summadb-test-patch")
+	db = Open("/tmp/summadb-test-merge")
 
-	// insert things by patching
-	err = db.Patch([]PatchOp{
-		PatchOp{types.Path{"gods", "1", "name"}, "", types.StringLeaf("zeus")},
-		PatchOp{types.Path{"gods", "1", "son"}, "", types.StringLeaf("heracles")},
-		PatchOp{types.Path{"gods", "2", "name"}, "", types.StringLeaf("odin")},
-		PatchOp{types.Path{"gods", "2", "son"}, "", types.StringLeaf("thor")},
+	// insert things by merging
+	err = db.Merge(types.Path{"gods"}, types.Tree{
+		Branches: types.Branches{
+			"1": &types.Tree{
+				Branches: types.Branches{
+					"name": &types.Tree{Leaf: types.StringLeaf("zeus")},
+					"son":  &types.Tree{Leaf: types.StringLeaf("heracles")},
+				},
+			},
+			"2": &types.Tree{
+				Branches: types.Branches{
+					"name": &types.Tree{Leaf: types.StringLeaf("odin")},
+					"son":  &types.Tree{Leaf: types.StringLeaf("thor")},
+				},
+			},
+		},
 	})
 	c.Assert(err, IsNil)
 
@@ -167,16 +177,25 @@ func (s *DatabaseSuite) TestPatch(c *C) {
 	c.Assert(treeread.Branches["2"].Rev, StartsWith, "1-")
 	c.Assert(treeread.Branches["2"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("odin"))
 
-	// fail to patch with wrong rev
-	err = db.Patch([]PatchOp{
-		PatchOp{types.Path{"gods", "1", "name"}, "1-wrong", types.StringLeaf("hades")},
-	})
+	// fail to merge with wrong rev
+	err = db.Merge(types.Path{"gods"}, types.Tree{Leaf: types.NumberLeaf(12)})
 	c.Assert(err, Not(IsNil))
 
-	// patch some properties
-	err = db.Patch([]PatchOp{
-		PatchOp{types.Path{"gods", "1", "power"}, "", types.StringLeaf("thunder")},
-		PatchOp{types.Path{"gods", "2", "power"}, "", types.StringLeaf("battle")},
+	// merge some properties
+	err = db.Merge(types.Path{"gods"}, types.Tree{
+		Rev: treeread.Rev,
+		Branches: types.Branches{
+			"1": &types.Tree{
+				Branches: types.Branches{
+					"power": &types.Tree{Leaf: types.StringLeaf("thunder")},
+				},
+			},
+			"2": &types.Tree{
+				Branches: types.Branches{
+					"power": &types.Tree{Leaf: types.StringLeaf("battle")},
+				},
+			},
+		},
 	})
 	c.Assert(err, IsNil)
 
@@ -187,15 +206,13 @@ func (s *DatabaseSuite) TestPatch(c *C) {
 	c.Assert(treeread.Branches["gods"].Branches["1"].Branches["power"].Rev, StartsWith, "1-")
 	c.Assert(treeread.Branches["gods"].Branches["2"].Branches["power"].Leaf, DeepEquals, types.StringLeaf("battle"))
 
-	// patch with null to delete
-	err = db.Patch([]PatchOp{
-		PatchOp{types.Path{"gods", "1", "son"}, "", types.NullLeaf()},
-		PatchOp{types.Path{"gods", "1", "son", "name"}, "", types.StringLeaf("thor")},
-	})
-	c.Assert(err, Not(IsNil) /* fails because of the rev */)
-	err = db.Patch([]PatchOp{ /* try again */
-		PatchOp{types.Path{"gods", "1", "son"}, treeread.Branches["gods"].Branches["1"].Branches["son"].Rev, types.NullLeaf()},
-		PatchOp{types.Path{"gods", "1", "son", "name"}, "", types.StringLeaf("thor")},
+	// merge _deleted to delete
+	err = db.Merge(types.Path{"gods", "1", "son"}, types.Tree{
+		Rev:     treeread.Branches["gods"].Branches["1"].Branches["son"].Rev,
+		Deleted: true,
+		Branches: types.Branches{
+			"name": &types.Tree{Leaf: types.StringLeaf("thor")},
+		},
 	})
 	c.Assert(err, IsNil)
 
