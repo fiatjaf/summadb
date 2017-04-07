@@ -72,3 +72,18 @@ func LeafFromInterface(v interface{}) Leaf {
 		return NullLeaf()
 	}
 }
+
+func (l Leaf) ToInterface() interface{} {
+	switch l.Kind {
+	case NUMBER:
+		return l.float64
+	case STRING:
+		return l.string
+	case BOOL:
+		return l.bool
+	case NULL:
+		return nil
+	default:
+		return nil
+	}
+}

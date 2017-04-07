@@ -11,4 +11,4 @@ install:
   - go get github.com/spf13/viper
   - go get github.com/yuin/gopher-lua
   - go get gopkg.in/check.v1
-script: cd utils && go test && cd ../types && go test && cd ../views && go test && cd ../database && go test
+script: rm -fr /tmp/summa* && cd utils && go test && cd ../types && go test && cd ../views && go test && cd ../database && go test -tags=goleveldown && go test -tags=rocksdown

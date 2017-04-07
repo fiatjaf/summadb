@@ -6,11 +6,9 @@ import (
 	"github.com/fiatjaf/levelup"
 	slu "github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/fiatjaf/summadb/types"
-	"github.com/fiatjaf/summadb/views"
-	"github.com/mgutz/logxi/v1"
 )
 
-const SEP = "^!~@!"
+const SEP = "^!~"
 
 func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 	// look through ancestors for map functions
@@ -51,7 +49,7 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 	if mapf == "" {
 		// in this case we do an 'update' with no emitted rows. that will clean the map results.
 		for docid, _ := range tree.Branches {
-			db.updateEmittedRowsInTheDatabase(p, docid, []views.EmittedRow{})
+			db.updateEmittedRowsInTheDatabase(p, docid, []types.EmittedRow{})
 		}
 	} else {
 		for docid, doc := range tree.Branches {
@@ -61,18 +59,7 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 	}
 }
 
-func runMap(mapf string, tree types.Tree, key string) []views.EmittedRow {
-	emittedrows, err := views.Map(mapf, tree, key)
-	if err != nil {
-		log.Error("views.Map returned error.",
-			"err", err,
-			"mapf", mapf,
-			"docid", key)
-	}
-	return emittedrows
-}
-
-func (db *SummaDB) updateEmittedRowsInTheDatabase(p types.Path, docid string, emittedrows []views.EmittedRow) {
+func (db *SummaDB) updateEmittedRowsInTheDatabase(p types.Path, docid string, emittedrows []types.EmittedRow) {
 	allrelativepaths := make([]string, len(emittedrows))
 
 	for i, row := range emittedrows {

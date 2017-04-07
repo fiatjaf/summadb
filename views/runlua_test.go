@@ -26,17 +26,17 @@ emit("r", null)
     `, types.Tree{}, "")
 
 	c.Assert(err, IsNil)
-	c.Assert(emitted, DeeplyEquals, []EmittedRow{
-		EmittedRow{types.Path{"x"}, types.TreeFromJSON(`{"b": "name"}`)},
-		EmittedRow{types.Path{"y"}, types.TreeFromJSON(`{
+	c.Assert(emitted, DeeplyEquals, []types.EmittedRow{
+		types.EmittedRow{types.Path{"x"}, types.TreeFromJSON(`{"b": "name"}`)},
+		types.EmittedRow{types.Path{"y"}, types.TreeFromJSON(`{
             "a": 3,
             "l": {
               "xx": "xx"
             }
 		}`)},
-		EmittedRow{types.Path{"z", "23"}, types.TreeFromJSON(`18`)},
-		EmittedRow{types.Path{"w", "m"}, types.TreeFromJSON(`"dabliuême"`)},
-		EmittedRow{types.Path{"r"}, types.TreeFromJSON(`1`)},
+		types.EmittedRow{types.Path{"z", "23"}, types.TreeFromJSON(`18`)},
+		types.EmittedRow{types.Path{"w", "m"}, types.TreeFromJSON(`"dabliuême"`)},
+		types.EmittedRow{types.Path{"r"}, types.TreeFromJSON(`1`)},
 	})
 
 	emitted, err = Map(`
@@ -50,7 +50,7 @@ emit('name-lengths', doc.name._val, string.len(doc.name._val))
 	}, "")
 
 	c.Assert(err, IsNil)
-	c.Assert(emitted, DeeplyEquals, []EmittedRow{
-		EmittedRow{types.Path{"name-lengths", "mariazinha"}, types.TreeFromJSON(`10`)},
+	c.Assert(emitted, DeeplyEquals, []types.EmittedRow{
+		types.EmittedRow{types.Path{"name-lengths", "mariazinha"}, types.TreeFromJSON(`10`)},
 	})
 }

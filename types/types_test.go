@@ -17,6 +17,16 @@ type TypesSuite struct{}
 
 var _ = Suite(&TypesSuite{})
 
+func (s *TypesSuite) TestTreeFromInterface(c *C) {
+	var x interface{}
+	x = map[string]interface{}{"hello": "world"}
+	c.Assert(TreeFromInterface(x), DeepEquals, Tree{
+		Branches: Branches{
+			"hello": &Tree{Leaf: StringLeaf("world")},
+		},
+	})
+}
+
 func (s *TypesSuite) TestUnmarshalJSON(c *C) {
 	c.Assert(TreeFromJSON(`{"a": "b"}`), DeepEquals, Tree{
 		Branches: Branches{

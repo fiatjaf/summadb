@@ -6,7 +6,7 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
-func Map(code string, t types.Tree, docid string) ([]EmittedRow, error) {
+func Map(code string, t types.Tree, docid string) ([]types.EmittedRow, error) {
 	L := lua.NewState()
 	defer L.Close()
 
@@ -17,7 +17,7 @@ func Map(code string, t types.Tree, docid string) ([]EmittedRow, error) {
 	L.SetGlobal("doc", doc)
 
 	// the 'emit' function
-	var emitted []EmittedRow
+	var emitted []types.EmittedRow
 	L.SetGlobal("emit", L.NewFunction(func(L *lua.LState) int {
 		path := types.Path{}
 
@@ -57,7 +57,7 @@ func Map(code string, t types.Tree, docid string) ([]EmittedRow, error) {
 			value = types.Tree{Leaf: types.NumberLeaf(1)}
 		}
 
-		emitted = append(emitted, EmittedRow{RelativePath: path, Value: value})
+		emitted = append(emitted, types.EmittedRow{RelativePath: path, Value: value})
 		return 0
 	}))
 
@@ -70,9 +70,4 @@ func Map(code string, t types.Tree, docid string) ([]EmittedRow, error) {
 
 	err := L.DoString(code)
 	return emitted, err
-}
-
-type EmittedRow struct {
-	RelativePath types.Path
-	Value        types.Tree
 }

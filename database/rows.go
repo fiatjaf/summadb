@@ -3,7 +3,6 @@ package database
 import (
 	slu "github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/fiatjaf/summadb/types"
-	"github.com/mgutz/logxi/v1"
 )
 
 type RowsParams struct {

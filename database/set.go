@@ -65,8 +65,10 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			return
 		} else {
 			// the leaf value
-			jsonvalue, _ := leaf.MarshalJSON()
-			ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
+			if leaf.Kind != types.NULL {
+				jsonvalue, _ := leaf.MarshalJSON()
+				ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
+			}
 
 			// mark the rev to bump (from 0, if this path wasn't already on the database)
 			if _, exists := revsToBump[path.Join()]; !exists {
@@ -97,7 +99,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	}
 
 	// write
-	err = db.Batch(ops)
+	err := db.Batch(ops)
 
 	if err == nil {
 		for _, update := range mapfUpdated {

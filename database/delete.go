@@ -75,7 +75,7 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 	}
 
 	// write
-	err = db.Batch(ops)
+	err := db.Batch(ops)
 
 	if err == nil {
 		// if a map is being deleted, trigger a mapf update

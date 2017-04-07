@@ -83,7 +83,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 	}
 
 	// write
-	err = db.Batch(ops)
+	err := db.Batch(ops)
 
 	if err == nil {
 		for _, update := range mapfUpdated {

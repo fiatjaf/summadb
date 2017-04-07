@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+
+	"gopkg.in/fiatjaf/summadb.v1/types"
 )
 
 type Tree struct {
@@ -35,6 +37,12 @@ func TreeFromInterface(v interface{}) Tree {
 	t := Tree{}
 
 	switch val := v.(type) {
+	case map[interface{}]interface{}:
+		newmap := make(map[string]interface{}, len(val))
+		for keyname, value := range val {
+			newmap[keyname.(string)] = value
+		}
+		return TreeFromInterface(newmap)
 	case map[string]interface{}:
 		if key, ok := val["_key"]; ok {
 			t.Key = key.(string)
@@ -140,4 +148,40 @@ func (t Tree) Recurse(p Path, handle func(Path, Leaf, Tree) bool) {
 			t.Recurse(deeppath, handle)
 		}
 	}
+}
+
+func (t Tree) ToInterface() map[string]interface{} {
+	o := map[string]interface{}{}
+
+	// current leaf
+	if t.Leaf.Kind != types.NULL {
+		o["_val"] = t.Leaf.ToInterface()
+	}
+
+	// key
+	if t.Key != "" {
+		o["_key"] = t.Key
+	}
+
+	// rev
+	if t.Rev != "" {
+		o["_rev"] = t.Rev
+	}
+
+	// map
+	if t.Map != "" {
+		o["@map"] = t.Map
+	}
+
+	// deleted
+	if t.Deleted {
+		o["_del"] = t.Deleted
+	}
+
+	// all branches
+	for subkey, branch := range t.Branches {
+		o[subkey] = branch.ToInterface()
+	}
+
+	return o
 }

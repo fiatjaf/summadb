@@ -9,7 +9,6 @@ import (
 
 	"github.com/fiatjaf/levelup"
 	"github.com/fiatjaf/summadb/types"
-	"github.com/mgutz/logxi/v1"
 )
 
 func bumpRev(rev string) string {
