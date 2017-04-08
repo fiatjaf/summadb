@@ -40,8 +40,18 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 		}
 
 		path := types.ParsePath(iter.Key())
+
+		// skip rows starting with special keys
+		// (for example, <sourcepath>/_rev would appear here as just _rev)
+		if !path.IsLeaf() {
+			continue
+		}
+
 		relpath := path.RelativeTo(sourcepath)
+
+		// the first key of the relpath is the _key
 		key := relpath[0]
+		relpath = relpath[1:]
 
 		// fetch the tree we're currently filling or start a new tree
 		var tree *types.Tree
@@ -60,13 +70,13 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 
 		// descend into tree filling in the values read from the database
 		currentbranch := tree
-		for /* start at 1 because 0 is already the _key */ i := 1; i <= len(relpath); i++ {
+
+		for i := 0; i <= len(relpath); i++ {
 			if i == len(relpath) {
-				// last key of the path
-				// add the leaf here
+				// we're past the last key, so we're finished. add the leaf here.
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
-					log.Error("failed to unmarshal json on Rows()",
+					log.Error("failed to unmarshal json leaf on Rows()",
 						"value", value,
 						"err", err)
 					return

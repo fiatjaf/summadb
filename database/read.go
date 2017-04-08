@@ -34,6 +34,9 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 				// add the leaf here
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
+					log.Error("failed to unmarshal json leaf on Read()",
+						"value", value,
+						"err", err)
 					return types.Tree{}, err
 				}
 				currentbranch.Leaf = *leaf

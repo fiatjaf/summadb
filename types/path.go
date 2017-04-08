@@ -49,7 +49,9 @@ func (p Path) Parent() Path {
 	}
 	return p[:size-1]
 }
-func (p Path) Child(s string) Path { return append(p.Copy(), s) }
+func (p Path) Child(s string) Path {
+	return append(p.Copy(), s)
+}
 func (p Path) Last() string {
 	size := len(p)
 	if size == 0 {
@@ -57,9 +59,6 @@ func (p Path) Last() string {
 	}
 	return p[size-1]
 }
-func (p Path) Special() bool { return strings.HasPrefix(p.Last(), "_") }
-func (p Path) Leaf() bool    { return !p.Special() }
-
 func (p1 Path) Equals(p2 Path) bool { return p1.Join() == p2.Join() }
 func (p Path) Copy() Path {
 	var newpath Path
@@ -79,4 +78,12 @@ func (p Path) Valid() bool {
 		}
 	}
 	return true
+}
+
+func (p Path) IsLeaf() bool {
+	last := p.Last()
+	if len(last) > 0 && last[0] != '_' && last[0] != '@' {
+		return true
+	}
+	return false
 }

@@ -48,7 +48,7 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 			// we're deleting everything besides _rev and _del)
 			ops = append(ops, slu.Del(path.Join()))
 
-			if path.Leaf() {
+			if path.IsLeaf() {
 				// mark it as deleted
 				ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 			}

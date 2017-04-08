@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
-
-	"gopkg.in/fiatjaf/summadb.v1/types"
 )
 
 type Tree struct {
@@ -154,7 +152,7 @@ func (t Tree) ToInterface() map[string]interface{} {
 	o := map[string]interface{}{}
 
 	// current leaf
-	if t.Leaf.Kind != types.NULL {
+	if t.Leaf.Kind != NULL {
 		o["_val"] = t.Leaf.ToInterface()
 	}
 

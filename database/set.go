@@ -40,7 +40,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 			// we're deleting everything besides _rev and _del)
 			ops = append(ops, slu.Del(path.Join()))
 
-			if path.Leaf() {
+			if path.IsLeaf() {
 				// mark it as deleted (will unmark later if needed)
 				ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 			}
