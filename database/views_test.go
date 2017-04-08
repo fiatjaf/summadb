@@ -80,7 +80,7 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 	})
 
 	// modify the map function
-	rev, _ := db.Get("food/_rev") // hack to get the rev
+	rev, _ := db.Rev(types.Path{"food"})
 	err = db.Merge(types.Path{"food"}, types.Tree{
 		Rev: rev,
 		Map: `
@@ -104,7 +104,7 @@ emit('by-size', food.size._val, food)
 	c.Assert(treeread.Branches["10"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("apple"))
 
 	// delete a subtree using delete()
-	rev, _ = db.Get("food/1/_rev") // hack to get the rev
+	rev, _ = db.Rev(types.Path{"food", "1"})
 	err = db.Delete(types.Path{"food", "1"}, rev)
 	time.Sleep(time.Millisecond * 200)
 	c.Assert(err, IsNil)
@@ -114,7 +114,7 @@ emit('by-size', food.size._val, food)
 	c.Assert(len(treeread.Branches), Equals, 3)
 
 	// delete the map function with merge()
-	rev, _ = db.Get("food/_rev") // hack to get the rev
+	rev, _ = db.Rev(types.Path{"food"})
 	err = db.Merge(types.Path{"food"}, types.Tree{
 		Rev:     rev,
 		Deleted: true,
@@ -131,7 +131,11 @@ emit('by-size', food.size._val, food)
 	c.Assert(len(treeread.Branches), Equals, 0)
 
 	// insert multiple map functions at different levels
-	rev, _ = db.Get("_rev") // hack to get the rev
+	rev, _ = db.Rev(types.Path{})
+
+	// check rev first
+	c.Assert(rev, StartsWith, "5-")
+
 	err = db.Merge(types.Path{}, types.Tree{
 		Rev: rev,
 		Map: `emit('categories', doc._key, true)`,

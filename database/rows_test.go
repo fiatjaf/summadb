@@ -58,7 +58,7 @@ func (s *DatabaseSuite) TestRows(c *C) {
 	c.Assert(rows[1].Branches["color"].Leaf, DeepEquals, types.StringLeaf("green"))
 
 	// make an autocomplete index
-	rev, _ := db.Get("eatables/_rev") // hack to get the rev
+	rev, _ := db.Rev(types.Path{"eatables"})
 	err = db.Merge(types.Path{"eatables"}, types.Tree{
 		Rev: rev,
 		Map: `
