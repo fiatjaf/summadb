@@ -6,9 +6,10 @@ install:
   - go get github.com/fiatjaf/goleveldown
   - go get github.com/fiatjaf/levelup
   - go get github.com/fiatjaf/levelup/stringlevelup
+  - go get github.com/inconshreveable/log15
   - go get github.com/mgutz/logxi/v1
   - go get github.com/kr/pretty
   - go get github.com/spf13/viper
   - go get github.com/yuin/gopher-lua
   - go get gopkg.in/check.v1
-script: rm -fr /tmp/summa* && cd utils && go test && cd ../types && go test && cd ../views && go test && cd ../database && go test -tags=goleveldown && go test -tags=rocksdown
+script: rm -fr /tmp/summa* && cd utils && go test && cd ../types && go test && cd ../views && go test && cd ../database && go test -tags=goleveldown
