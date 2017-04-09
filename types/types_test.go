@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	. "github.com/fiatjaf/summadb/utils"
+	. "github.com/summadb/summadb/utils"
 	. "gopkg.in/check.v1"
 )
 

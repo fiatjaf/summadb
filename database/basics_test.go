@@ -3,8 +3,8 @@ package database
 import (
 	"testing"
 
-	"github.com/fiatjaf/summadb/types"
-	. "github.com/fiatjaf/summadb/utils"
+	"github.com/summadb/summadb/types"
+	. "github.com/summadb/summadb/utils"
 	. "gopkg.in/check.v1"
 )
 

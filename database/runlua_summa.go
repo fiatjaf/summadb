@@ -3,8 +3,8 @@
 package database
 
 import (
-	"github.com/fiatjaf/summadb/types"
-	"github.com/fiatjaf/summadb/views"
+	"github.com/summadb/summadb/types"
+	"github.com/summadb/summadb/views"
 )
 
 func runMap(mapf string, tree types.Tree, key string) []types.EmittedRow {

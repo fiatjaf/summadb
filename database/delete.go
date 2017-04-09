@@ -5,7 +5,7 @@ import (
 
 	"github.com/fiatjaf/levelup"
 	slu "github.com/fiatjaf/levelup/stringlevelup"
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 )
 
 func (db *SummaDB) Delete(p types.Path, rev string) error {

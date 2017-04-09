@@ -5,7 +5,7 @@ import (
 
 	"github.com/fiatjaf/levelup"
 	slu "github.com/fiatjaf/levelup/stringlevelup"
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 )
 
 // Merge is similar to Set, the difference being that it merges

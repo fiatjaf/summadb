@@ -3,7 +3,7 @@ package database
 import (
 	"errors"
 
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 )
 
 // the most simple function in the world, a helper to the _rev for a given path.

@@ -2,7 +2,7 @@ package database
 
 import (
 	slu "github.com/fiatjaf/levelup/stringlevelup"
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 )
 
 func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {

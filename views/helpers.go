@@ -1,7 +1,7 @@
 package views
 
 import (
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 	"github.com/yuin/gopher-lua"
 )
 

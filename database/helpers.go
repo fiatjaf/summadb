@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fiatjaf/levelup"
-	"github.com/fiatjaf/summadb/types"
+	"github.com/summadb/summadb/types"
 )
 
 func bumpRev(rev string) string {
