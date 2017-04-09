@@ -18,8 +18,8 @@ type RowsParams struct {
 // Rows return an array of trees, as the children of the given path.
 func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types.Tree, err error) {
 	rangeopts := slu.RangeOpts{
-		Start:   sourcepath.Join() + "/",
-		End:     sourcepath.Join() + "/~~~",
+		Start:   sourcepath.Child("").Join(),
+		End:     sourcepath.Child("~~~").Join(),
 		Reverse: params.Descending,
 	}
 	if params.KeyStart != "" {
@@ -28,9 +28,14 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 	if params.KeyEnd != "" {
 		rangeopts.End = sourcepath.Join() + "/" + params.KeyEnd
 	}
-	if params.Limit != 0 {
-		rangeopts.Limit = params.Limit
+
+	if params.Limit == 0 {
+		// default to a large number
+		params.Limit = 99999
 	}
+
+	// once we find something is deleted we'll remove it, but it will try to get readded by its children dbrows
+	deleted := make(map[string]bool)
 
 	iter := db.ReadRange(&rangeopts)
 	defer iter.Release()
@@ -40,26 +45,34 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 		}
 
 		path := types.ParsePath(iter.Key())
-
-		// skip rows starting with special keys
-		// (for example, <sourcepath>/_rev would appear here as just _rev)
-		if !path.IsLeaf() {
-			continue
-		}
-
 		relpath := path.RelativeTo(sourcepath)
 
 		// the first key of the relpath is the _key
 		key := relpath[0]
 		relpath = relpath[1:]
 
+		// special keys of the sourcepath shouldn't count as rows
+		if key[0] == '_' || key[0] == '@' {
+			continue
+		}
+
+		// skip rows already found to be deleted
+		if _, is := deleted[key]; is {
+			continue
+		}
+
 		// fetch the tree we're currently filling or start a new tree
 		var tree *types.Tree
 		if len(rows) == 0 || rows[len(rows)-1].Key != key {
+			// will start a new tree, if allowed by our 'limit' clause
+			if params.Limit == len(rows) {
+				return
+			}
 			tree = types.NewTree()
 			tree.Key = key
 			rows = append(rows, tree)
 		} else {
+			// fetched the tree we're currently filling
 			tree = rows[len(rows)-1]
 		}
 
@@ -93,6 +106,12 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 					currentbranch.Map = value
 				case "_del":
 					currentbranch.Deleted = true
+
+					if i == 0 {
+						// deleted rows are not be fetched, so we'll remove this from the results
+						rows = rows[:len(rows)-1]
+						deleted[currentbranch.Key] = true
+					}
 				default:
 					// create a subbranch at this key
 					subbranch, exists := currentbranch.Branches[key]

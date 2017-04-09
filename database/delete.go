@@ -63,7 +63,8 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 		son = parent
 	}
 
-	// finally, regardless of anything else, the source path should be bumped
+	// finally, regardless of anything else, the source path should be deleted and bumped
+	ops = append(ops, slu.Put(p.Child("_del").Join(), "1"))
 	rev, _ = db.Get(p.Child("_rev").Join())
 	revsToBump[p.Join()] = rev
 
