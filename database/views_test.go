@@ -48,8 +48,8 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 
 	treeread, err := db.Read(types.Path{"food", "@map", "by-kind"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 2 /* 'tuber' and 'fruit' */)
-	c.Assert(len(treeread.Branches["fruit"].Branches), Equals, 1)
+	c.Assert(treeread.Branches, HasLen, 2 /* 'tuber' and 'fruit' */)
+	c.Assert(treeread.Branches["fruit"].Branches, HasLen, 1)
 	c.Assert(treeread.Branches["tuber"], DeeplyEquals, &types.Tree{
 		Branches: types.Branches{
 			"3": &types.Tree{Leaf: types.StringLeaf("carrot")},
@@ -70,7 +70,7 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 2 /* 'tuber' and 'fruit' */)
+	c.Assert(treeread.Branches, HasLen, 2 /* 'tuber' and 'fruit' */)
 	c.Assert(treeread.Branches["tuber"], DeeplyEquals, &types.Tree{
 		Branches: types.Branches{
 			"3": &types.Tree{Leaf: types.StringLeaf("carrot")},
@@ -93,11 +93,11 @@ emit('by-size', food.size._val, food)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 0)
+	c.Assert(treeread.Branches, HasLen, 0)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 4 /* each food has a different size */)
+	c.Assert(treeread.Branches, HasLen, 4 /* each food has a different size */)
 	c.Assert(treeread.Branches["9"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("yam"))
 	c.Assert(treeread.Branches["17"].Branches["size"].Leaf, DeepEquals, types.NumberLeaf(17))
 	c.Assert(treeread.Branches["12"].Branches["kind"].Leaf, DeepEquals, types.StringLeaf("tuber"))
@@ -111,7 +111,7 @@ emit('by-size', food.size._val, food)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 3)
+	c.Assert(treeread.Branches, HasLen, 3)
 
 	// delete the map function with merge()
 	rev, _ = db.Rev(types.Path{"food"})
@@ -124,11 +124,11 @@ emit('by-size', food.size._val, food)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 0)
+	c.Assert(treeread.Branches, HasLen, 0)
 
 	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
 	c.Assert(err, IsNil)
-	c.Assert(len(treeread.Branches), Equals, 0)
+	c.Assert(treeread.Branches, HasLen, 0)
 
 	// insert multiple map functions at different levels
 	rev, _ = db.Rev(types.Path{})

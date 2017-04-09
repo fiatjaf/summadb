@@ -53,7 +53,7 @@ func (s *DatabaseSuite) TestRows(c *C) {
 	rows, err := db.Rows(types.Path{"eatables"}, RowsParams{KeyStart: "b", KeyEnd: "ba~"})
 	c.Assert(err, IsNil)
 
-	c.Assert(len(rows), Equals, 2)
+	c.Assert(rows, HasLen, 2)
 	c.Assert(rows[0].Branches["color"].Leaf, DeepEquals, types.StringLeaf("yellow"))
 	c.Assert(rows[1].Branches["color"].Leaf, DeepEquals, types.StringLeaf("green"))
 
