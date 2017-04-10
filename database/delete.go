@@ -12,7 +12,7 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 	var ops []levelup.Operation
 
 	// check if the path is valid for mutating
-	if !p.Valid() {
+	if !p.WriteValid() {
 		return errors.New("cannot delete invalid path: " + p.Join())
 	}
 

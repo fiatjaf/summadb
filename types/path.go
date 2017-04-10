@@ -65,7 +65,15 @@ func (p Path) Copy() Path {
 	return append(newpath, p...)
 }
 
-func (p Path) Valid() bool {
+func (p Path) ReadValid() bool {
+	switch p.Last() {
+	case "_rev", "_val", "_del", "@map":
+		return false
+	}
+	return true
+}
+
+func (p Path) WriteValid() bool {
 	for i, key := range p {
 		if key == "" {
 			return false

@@ -8,17 +8,18 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (s *DatabaseSuite) TestViews(c *C) {
+func (s *DatabaseSuite) TestMapFunctions(c *C) {
 	db := Open("/tmp/summadb-test-views")
 	db.Erase()
 	db = Open("/tmp/summadb-test-views")
 
 	// insert a tree with a map function
-	err = db.Set(types.Path{"food"}, types.Tree{
-		Map: `
+	mapf := `
 local food = doc
 emit('by-kind', food.kind._val, doc._key, food.name._val)
-        `,
+    `
+	err = db.Set(types.Path{"food"}, types.Tree{
+		Map: mapf,
 		Branches: types.Branches{
 			"1": &types.Tree{
 				Branches: types.Branches{
@@ -56,6 +57,17 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 			"2": &types.Tree{Leaf: types.StringLeaf("potato")},
 		},
 	})
+
+	// can't read @map directly
+	_, err = db.Read(types.Path{"food", "@map"})
+	c.Assert(err, Not(IsNil))
+
+	// @map results are not in the tree
+	treeread, err = db.Read(types.Path{"food"})
+	c.Assert(err, IsNil)
+	_, is := treeread.Branches["@map"]
+	c.Assert(is, Equals, false)
+	c.Assert(treeread.Map, Equals, mapf) // correct mapf value is returned on Map
 
 	// modify the tree
 	err = db.Set(types.Path{"food", "4"}, types.Tree{

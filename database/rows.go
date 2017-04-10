@@ -1,6 +1,8 @@
 package database
 
 import (
+	"errors"
+
 	slu "github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/summadb/summadb/types"
 )
@@ -17,6 +19,10 @@ type RowsParams struct {
 // in contrast with Read, which returns a big tree of everything under the given path,
 // Rows return an array of trees, as the children of the given path.
 func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types.Tree, err error) {
+	if !sourcepath.ReadValid() {
+		return rows, errors.New("cannot read invalid path: " + sourcepath.Join())
+	}
+
 	rangeopts := slu.RangeOpts{
 		Start:   sourcepath.Child("").Join(),
 		End:     sourcepath.Child("~~~").Join(),
@@ -103,10 +109,12 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 				case "_rev":
 					currentbranch.Rev = value
 				case "@map":
-					currentbranch.Map = value
+					if i == len(relpath)-1 {
+						// grab the code for the map function, never any of its results
+						currentbranch.Map = value
+					}
 				case "_del":
 					currentbranch.Deleted = true
-
 					if i == 0 {
 						// deleted rows are not be fetched, so we'll remove this from the results
 						rows = rows[:len(rows)-1]

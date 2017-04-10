@@ -15,7 +15,7 @@ func (l ConsoleLogger) Info(msg string, args ...interface{}) {
 }
 
 func (l ConsoleLogger) Error(msg string, args ...interface{}) {
-	console.Error(append([]interface{}{"Error", msg}, args...)...)
+	console.Error(append([]interface{}{"ERRR", msg}, args...)...)
 }
 
 func (l ConsoleLogger) Warn(msg string, args ...interface{}) {

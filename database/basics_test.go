@@ -45,6 +45,14 @@ func (s *DatabaseSuite) TestBasics(c *C) {
 	c.Assert(treeread.Leaf, DeepEquals, types.StringLeaf("can be eaten"))
 	c.Assert(treeread.Branches["banana"].Branches["color"].Leaf, DeepEquals, types.StringLeaf("blue"))
 
+	// fail to read special paths directly
+	_, err = db.Read(types.Path{"fruits", "banana", "_rev"})
+	c.Assert(err, Not(IsNil))
+	_, err = db.Read(types.Path{"fruits", "banana", "color", "_val"})
+	c.Assert(err, Not(IsNil))
+	_, err = db.Read(types.Path{"fruits", "_del"})
+	c.Assert(err, Not(IsNil))
+
 	// change a property inside a tree
 	err = db.Set(types.Path{"fruits", "banana", "color"}, types.Tree{
 		Rev:  treeread.Branches["banana"].Branches["color"].Rev,

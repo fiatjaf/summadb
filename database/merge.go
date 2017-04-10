@@ -15,7 +15,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 	var ops []levelup.Operation
 
 	// check if the path is valid for mutating
-	if !p.Valid() {
+	if !p.WriteValid() {
 		return errors.New("cannot set on invalid path: " + p.Join())
 	}
 

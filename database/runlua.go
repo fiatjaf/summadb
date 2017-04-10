@@ -1,5 +1,3 @@
-// +build goleveldown rocksdown
-
 package database
 
 import (

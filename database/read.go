@@ -1,11 +1,18 @@
 package database
 
 import (
+	"errors"
+	"strings"
+
 	slu "github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/summadb/summadb/types"
 )
 
 func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
+	if !sourcepath.ReadValid() {
+		return types.Tree{}, errors.New("cannot read invalid path: " + sourcepath.Join())
+	}
+
 	var err error
 	tree := types.NewTree()
 
@@ -19,7 +26,14 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 			return types.Tree{}, err
 		}
 
-		path := types.ParsePath(iter.Key())
+		rawpath := iter.Key()
+
+		// skip all rows emitted from @map functions
+		if strings.Index(rawpath, "/@map/") != -1 && rawpath == "@map" {
+			continue
+		}
+
+		path := types.ParsePath(rawpath)
 		relpath := path.RelativeTo(sourcepath)
 
 		value := iter.Value()
@@ -48,7 +62,10 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 				case "_rev":
 					currentbranch.Rev = value
 				case "@map":
-					currentbranch.Map = value
+					if i == len(relpath)-1 {
+						// grab the code for the map function, never any of its results
+						currentbranch.Map = value
+					}
 				case "_del":
 					currentbranch.Deleted = true
 				default:

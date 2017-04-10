@@ -59,15 +59,16 @@ func (s *DatabaseSuite) TestRows(c *C) {
 	c.Assert(rows[1].Branches["color"].Leaf, DeepEquals, types.StringLeaf("green"))
 
 	// make an autocomplete index
-	rev, _ := db.Rev(types.Path{"eatables"})
-	err = db.Merge(types.Path{"eatables"}, types.Tree{
-		Rev: rev,
-		Map: `
+	mapf := `
 for i=0, string.len(doc._key) do
   local part = string.sub(doc._key, 0, i)
   emit('search', part .. ":" .. doc._key, doc._key)
 end
-        `,
+    `
+	rev, _ := db.Rev(types.Path{"eatables"})
+	err = db.Merge(types.Path{"eatables"}, types.Tree{
+		Rev: rev,
+		Map: mapf,
 	})
 	c.Assert(err, IsNil)
 	time.Sleep(time.Millisecond * 200)
@@ -108,4 +109,5 @@ end
 	c.Assert(rows[0].Leaf, DeepEquals, types.StringLeaf("can be eaten"))
 	_, hasmapbranch := rows[0].Branches["@map"]
 	c.Assert(hasmapbranch, Equals, false)
+	c.Assert(rows[0].Map, Equals, mapf) // .Map should be the code of the mapf
 }
