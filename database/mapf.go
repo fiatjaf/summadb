@@ -29,7 +29,7 @@ func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 			docpath := son
 			docid := docpath.Last()
 			emittedrows := runMap(mapf, tree, docid)
-			db.updateEmittedRowsInTheDatabase(docpath.Parent(), docid, emittedrows)
+			db.updateEmittedRecordsInTheDatabase(docpath.Parent(), docid, emittedrows)
 		}
 
 		son = parent
@@ -49,17 +49,17 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 	if mapf == "" {
 		// in this case we do an 'update' with no emitted rows. that will clean the map results.
 		for docid, _ := range tree.Branches {
-			db.updateEmittedRowsInTheDatabase(p, docid, []types.EmittedRow{})
+			db.updateEmittedRecordsInTheDatabase(p, docid, []types.EmittedRow{})
 		}
 	} else {
 		for docid, doc := range tree.Branches {
 			emittedrows := runMap(mapf, *doc, docid)
-			db.updateEmittedRowsInTheDatabase(p, docid, emittedrows)
+			db.updateEmittedRecordsInTheDatabase(p, docid, emittedrows)
 		}
 	}
 }
 
-func (db *SummaDB) updateEmittedRowsInTheDatabase(p types.Path, docid string, emittedrows []types.EmittedRow) {
+func (db *SummaDB) updateEmittedRecordsInTheDatabase(p types.Path, docid string, emittedrows []types.EmittedRow) {
 	allrelativepaths := make([]string, len(emittedrows))
 
 	for i, row := range emittedrows {

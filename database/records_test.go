@@ -8,7 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (s *DatabaseSuite) TestRows(c *C) {
+func (s *DatabaseSuite) TestRecords(c *C) {
 	db := Open("/tmp/summadb-test-rows")
 	db.Erase()
 	db = Open("/tmp/summadb-test-rows")
@@ -51,7 +51,7 @@ func (s *DatabaseSuite) TestRows(c *C) {
 	})
 	c.Assert(err, IsNil)
 
-	rows, err := db.Rows(types.Path{"eatables"}, RowsParams{KeyStart: "b", KeyEnd: "ba~"})
+	rows, err := db.Records(types.Path{"eatables"}, RecordsParams{KeyStart: "b", KeyEnd: "ba~"})
 	c.Assert(err, IsNil)
 
 	c.Assert(rows, HasLen, 2)
@@ -73,7 +73,7 @@ end
 	c.Assert(err, IsNil)
 	time.Sleep(time.Millisecond * 200)
 
-	rows, err = db.Rows(types.Path{"eatables", "!map", "search"}, RowsParams{
+	rows, err = db.Records(types.Path{"eatables", "!map", "search"}, RecordsParams{
 		KeyStart:   "alf:",
 		KeyEnd:     "alf:~",
 		Descending: true,
@@ -84,12 +84,12 @@ end
 	c.Assert(rows[1].Leaf, DeepEquals, types.StringLeaf("alfajor"))
 
 	// limit
-	rows, err = db.Rows(types.Path{"eatables"}, RowsParams{Limit: 2})
+	rows, err = db.Records(types.Path{"eatables"}, RecordsParams{Limit: 2})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 2)
 	c.Assert(rows[0].Rev, StartsWith, "1-") // do fetched _rev
 
-	rows, err = db.Rows(types.Path{"eatables"}, RowsParams{Limit: 64})
+	rows, err = db.Records(types.Path{"eatables"}, RecordsParams{Limit: 64})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 5) // don't fetched more than available, nor !map
 
@@ -97,12 +97,12 @@ end
 	err = db.Delete(types.Path{"eatables", rows[0].Key}, rows[0].Rev)
 	c.Assert(err, IsNil)
 
-	rows, err = db.Rows(types.Path{"eatables"}, RowsParams{})
+	rows, err = db.Records(types.Path{"eatables"}, RecordsParams{})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 4) // don't fetched deleted rows
 
 	// don't fetch !map results
-	rows, err = db.Rows(types.Path{}, RowsParams{})
+	rows, err = db.Records(types.Path{}, RecordsParams{})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 1)
 	c.Assert(rows[0].Key, Equals, "eatables")

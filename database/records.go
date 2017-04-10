@@ -7,20 +7,20 @@ import (
 	"github.com/summadb/summadb/types"
 )
 
-type RowsParams struct {
+type RecordsParams struct {
 	KeyStart   string
 	KeyEnd     string
 	Descending bool
 	Limit      int
 }
 
-// Rows provide a querying interface similar to CouchDB, in which you can manually specify
+// Records provide a querying interface similar to CouchDB, in which you can manually specify
 // key start and end, starting at a certain "path level".
 // in contrast with Read, which returns a big tree of everything under the given path,
-// Rows return an array of trees, as the children of the given path.
-func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types.Tree, err error) {
+// Records return an array of trees, as the children of the given path.
+func (db *SummaDB) Records(sourcepath types.Path, params RecordsParams) (records []*types.Tree, err error) {
 	if !sourcepath.ReadValid() {
-		return rows, errors.New("cannot read invalid path: " + sourcepath.Join())
+		return records, errors.New("cannot read invalid path: " + sourcepath.Join())
 	}
 
 	rangeopts := slu.RangeOpts{
@@ -40,7 +40,7 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 		params.Limit = 99999
 	}
 
-	// once we find something is deleted we'll remove it, but it will try to get readded by its children dbrows
+	// once we find something is deleted we'll remove it, but it will try to get readded by its children rows
 	deleted := make(map[string]bool)
 
 	iter := db.ReadRange(&rangeopts)
@@ -57,29 +57,29 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 		key := relpath[0]
 		relpath = relpath[1:]
 
-		// special keys of the sourcepath shouldn't count as rows
+		// special keys of the sourcepath shouldn't count as records
 		if key[0] == '_' || key[0] == '!' {
 			continue
 		}
 
-		// skip rows already found to be deleted
+		// skip records already found to be deleted
 		if _, is := deleted[key]; is {
 			continue
 		}
 
 		// fetch the tree we're currently filling or start a new tree
 		var tree *types.Tree
-		if len(rows) == 0 || rows[len(rows)-1].Key != key {
+		if len(records) == 0 || records[len(records)-1].Key != key {
 			// will start a new tree, if allowed by our 'limit' clause
-			if params.Limit == len(rows) {
+			if params.Limit == len(records) {
 				return
 			}
 			tree = types.NewTree()
 			tree.Key = key
-			rows = append(rows, tree)
+			records = append(records, tree)
 		} else {
 			// fetched the tree we're currently filling
-			tree = rows[len(rows)-1]
+			tree = records[len(records)-1]
 		}
 
 		value := iter.Value()
@@ -95,7 +95,7 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 				// we're past the last key, so we're finished. add the leaf here.
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
-					log.Error("failed to unmarshal json leaf on Rows()",
+					log.Error("failed to unmarshal json leaf on Records()",
 						"value", value,
 						"err", err)
 					return
@@ -116,8 +116,8 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 				case "_del":
 					currentbranch.Deleted = true
 					if i == 0 {
-						// deleted rows are not be fetched, so we'll remove this from the results
-						rows = rows[:len(rows)-1]
+						// deleted records are not be fetched, so we'll remove this from the results
+						records = records[:len(records)-1]
 						deleted[currentbranch.Key] = true
 					}
 				default:
