@@ -58,7 +58,7 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 		relpath = relpath[1:]
 
 		// special keys of the sourcepath shouldn't count as rows
-		if key[0] == '_' || key[0] == '@' {
+		if key[0] == '_' || key[0] == '!' {
 			continue
 		}
 
@@ -108,7 +108,7 @@ func (db *SummaDB) Rows(sourcepath types.Path, params RowsParams) (rows []*types
 				switch key {
 				case "_rev":
 					currentbranch.Rev = value
-				case "@map":
+				case "!map":
 					if i == len(relpath)-1 {
 						// grab the code for the map function, never any of its results
 						currentbranch.Map = value

@@ -14,7 +14,7 @@ func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 	// look through ancestors for map functions
 	son := p.Copy()
 	for parent := son.Parent(); !parent.Equals(son); parent = son.Parent() {
-		mapf, _ := db.Get(parent.Child("@map").Join())
+		mapf, _ := db.Get(parent.Child("!map").Join())
 		if mapf != "" {
 			// grab document
 			tree, err := db.Read(son)
@@ -119,7 +119,7 @@ func (db *SummaDB) updateEmittedRowsInTheDatabase(p types.Path, docid string, em
 func (db *SummaDB) deleteEmittedRow(base types.Path, relpath types.Path) error {
 	var ops []levelup.Operation
 
-	rowpath := append(base.Child("@map"), relpath...)
+	rowpath := append(base.Child("!map"), relpath...)
 	iter := db.ReadRange(&slu.RangeOpts{
 		Start: rowpath.Join(),
 		End:   rowpath.Join() + "~~~",
@@ -135,7 +135,7 @@ func (db *SummaDB) deleteEmittedRow(base types.Path, relpath types.Path) error {
 func (db *SummaDB) saveEmittedRow(base types.Path, relpath types.Path, value types.Tree) error {
 	var ops []levelup.Operation
 
-	rowpath := append(base.Child("@map"), relpath...)
+	rowpath := append(base.Child("!map"), relpath...)
 	value.Recurse(rowpath,
 		func(p types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 			if leaf.Kind != types.NULL {

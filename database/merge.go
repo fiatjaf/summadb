@@ -35,14 +35,14 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 		rev, _ := db.Get(path.Child("_rev").Join())
 		revsToBump[path.Join()] = rev
 
-		mapf, _ := db.Get(path.Child("@map").Join())
+		mapf, _ := db.Get(path.Child("!map").Join())
 
 		if t.Deleted {
 			// delete this leaf
 			ops = append(ops, slu.Del(path.Join()))
 			ops = append(ops, slu.Put(path.Child("_del").Join(), "1"))
 
-			// trigger removal of @map results
+			// trigger removal of !map results
 			if mapf != "" {
 				mapfUpdated = append(mapfUpdated, mapfupdated{path, ""})
 			}
@@ -57,7 +57,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 			}
 
 			if mapf != t.Map {
-				ops = append(ops, slu.Put(path.Child("@map").Join(), t.Map))
+				ops = append(ops, slu.Put(path.Child("!map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
 				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})

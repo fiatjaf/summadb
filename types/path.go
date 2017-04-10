@@ -67,7 +67,7 @@ func (p Path) Copy() Path {
 
 func (p Path) ReadValid() bool {
 	switch p.Last() {
-	case "_rev", "_val", "_del", "@map":
+	case "_rev", "_val", "_del", "!map":
 		return false
 	}
 	return true
@@ -81,7 +81,7 @@ func (p Path) WriteValid() bool {
 		if key[0] == '_' {
 			return false
 		}
-		if key[0] == '@' && i != len(p)-1 {
+		if key[0] == '!' && i != len(p)-1 {
 			return false
 		}
 	}
@@ -90,7 +90,7 @@ func (p Path) WriteValid() bool {
 
 func (p Path) IsLeaf() bool {
 	last := p.Last()
-	if len(last) > 0 && last[0] != '_' && last[0] != '@' {
+	if len(last) > 0 && last[0] != '_' && last[0] != '!' {
 		return true
 	}
 	return false

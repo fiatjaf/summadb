@@ -28,8 +28,8 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 
 		rawpath := iter.Key()
 
-		// skip all rows emitted from @map functions
-		if strings.Index(rawpath, "/@map/") != -1 && rawpath == "@map" {
+		// skip all rows emitted from !map functions
+		if strings.Index(rawpath, "/!map/") != -1 && rawpath == "!map" {
 			continue
 		}
 
@@ -61,7 +61,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 				switch key {
 				case "_rev":
 					currentbranch.Rev = value
-				case "@map":
+				case "!map":
 					if i == len(relpath)-1 {
 						// grab the code for the map function, never any of its results
 						currentbranch.Map = value

@@ -81,7 +81,7 @@ func (db *SummaDB) Delete(p types.Path, rev string) error {
 	if err == nil {
 		// if a map is being deleted, trigger a mapf update
 		// no value is going to be emitted, since all child rows are deleted
-		// but we need to clear everything at @map/
+		// but we need to clear everything at !map/
 		go db.triggerChildrenMapUpdates("", p)
 
 		// since this is a general subtree modification

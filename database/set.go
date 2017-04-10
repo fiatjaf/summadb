@@ -80,7 +80,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 
 			// save the map function if provided
 			if t.Map != "" {
-				ops = append(ops, slu.Put(path.Child("@map").Join(), t.Map))
+				ops = append(ops, slu.Put(path.Child("!map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
 				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})

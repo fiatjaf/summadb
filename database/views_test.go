@@ -47,7 +47,7 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 	c.Assert(err, IsNil)
 	time.Sleep(time.Millisecond * 200)
 
-	treeread, err := db.Read(types.Path{"food", "@map", "by-kind"})
+	treeread, err := db.Read(types.Path{"food", "!map", "by-kind"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 2 /* 'tuber' and 'fruit' */)
 	c.Assert(treeread.Branches["fruit"].Branches, HasLen, 1)
@@ -58,14 +58,14 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 		},
 	})
 
-	// can't read @map directly
-	_, err = db.Read(types.Path{"food", "@map"})
+	// can't read !map directly
+	_, err = db.Read(types.Path{"food", "!map"})
 	c.Assert(err, Not(IsNil))
 
-	// @map results are not in the tree
+	// !map results are not in the tree
 	treeread, err = db.Read(types.Path{"food"})
 	c.Assert(err, IsNil)
-	_, is := treeread.Branches["@map"]
+	_, is := treeread.Branches["!map"]
 	c.Assert(is, Equals, false)
 	c.Assert(treeread.Map, Equals, mapf) // correct mapf value is returned on Map
 
@@ -80,7 +80,7 @@ emit('by-kind', food.kind._val, doc._key, food.name._val)
 	c.Assert(err, IsNil)
 	time.Sleep(time.Millisecond * 200)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-kind"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 2 /* 'tuber' and 'fruit' */)
 	c.Assert(treeread.Branches["tuber"], DeeplyEquals, &types.Tree{
@@ -103,11 +103,11 @@ emit('by-size', food.size._val, food)
 	time.Sleep(time.Millisecond * 200)
 	c.Assert(err, IsNil)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-kind"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 0)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-size"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 4 /* each food has a different size */)
 	c.Assert(treeread.Branches["9"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("yam"))
@@ -121,7 +121,7 @@ emit('by-size', food.size._val, food)
 	time.Sleep(time.Millisecond * 200)
 	c.Assert(err, IsNil)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-size"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 3)
 
@@ -134,11 +134,11 @@ emit('by-size', food.size._val, food)
 	time.Sleep(time.Millisecond * 200)
 	c.Assert(err, IsNil)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-kind"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-kind"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 0)
 
-	treeread, err = db.Read(types.Path{"food", "@map", "by-size"})
+	treeread, err = db.Read(types.Path{"food", "!map", "by-size"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Branches, HasLen, 0)
 
@@ -164,11 +164,11 @@ emit('by-size', food.size._val, food)
 	time.Sleep(time.Millisecond * 200)
 	c.Assert(err, IsNil)
 
-	treeread, err = db.Read(types.Path{"@map", "categories", "food"})
+	treeread, err = db.Read(types.Path{"!map", "categories", "food"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Leaf, DeepEquals, types.BoolLeaf(true))
 
-	treeread, err = db.Read(types.Path{"food", "@map", "categories", "tuber"})
+	treeread, err = db.Read(types.Path{"food", "!map", "categories", "tuber"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Leaf, DeepEquals, types.BoolLeaf(true))
 }

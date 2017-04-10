@@ -73,7 +73,7 @@ end
 	c.Assert(err, IsNil)
 	time.Sleep(time.Millisecond * 200)
 
-	rows, err = db.Rows(types.Path{"eatables", "@map", "search"}, RowsParams{
+	rows, err = db.Rows(types.Path{"eatables", "!map", "search"}, RowsParams{
 		KeyStart:   "alf:",
 		KeyEnd:     "alf:~",
 		Descending: true,
@@ -91,7 +91,7 @@ end
 
 	rows, err = db.Rows(types.Path{"eatables"}, RowsParams{Limit: 64})
 	c.Assert(err, IsNil)
-	c.Assert(rows, HasLen, 5) // don't fetched more than available, nor @map
+	c.Assert(rows, HasLen, 5) // don't fetched more than available, nor !map
 
 	// don't fetched deleted
 	err = db.Delete(types.Path{"eatables", rows[0].Key}, rows[0].Rev)
@@ -101,13 +101,13 @@ end
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 4) // don't fetched deleted rows
 
-	// don't fetch @map results
+	// don't fetch !map results
 	rows, err = db.Rows(types.Path{}, RowsParams{})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 1)
 	c.Assert(rows[0].Key, Equals, "eatables")
 	c.Assert(rows[0].Leaf, DeepEquals, types.StringLeaf("can be eaten"))
-	_, hasmapbranch := rows[0].Branches["@map"]
+	_, hasmapbranch := rows[0].Branches["!map"]
 	c.Assert(hasmapbranch, Equals, false)
 	c.Assert(rows[0].Map, Equals, mapf) // .Map should be the code of the mapf
 }
