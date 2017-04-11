@@ -60,9 +60,9 @@ func (s *DatabaseSuite) TestRecords(c *C) {
 
 	// make an autocomplete index
 	mapf := `
-for i=0, string.len(doc._key) do
-  local part = string.sub(doc._key, 0, i)
-  emit('search', part .. ":" .. doc._key, doc._key)
+for i=0, string.len(_key) do
+  local part = string.sub(_key, 0, i)
+  emit('search', part .. ":" .. _key, _key)
 end
     `
 	rev, _ := db.Rev(types.Path{"eatables"})

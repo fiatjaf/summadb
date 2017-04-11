@@ -6,15 +6,17 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
-func Map(code string, t types.Tree, docid string) ([]types.EmittedRow, error) {
+func Map(code string, t types.Tree, key string) ([]types.EmittedRow, error) {
 	L := lua.NewState()
 	defer L.Close()
 
 	// the 'doc'
 	doc := L.CreateTable(32, 32)
 	treeToLTable(L, doc, t)
-	doc.RawSetString("_key", lua.LString(docid))
 	L.SetGlobal("doc", doc)
+
+	// the "_key"
+	L.SetGlobal("_key", lua.LString(key))
 
 	// the 'emit' function
 	var emitted []types.EmittedRow

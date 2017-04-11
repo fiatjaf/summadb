@@ -16,7 +16,7 @@ func (s *DatabaseSuite) TestMapFunctions(c *C) {
 	// insert a tree with a map function
 	mapf := `
 local food = doc
-emit('by-kind', food.kind._val, doc._key, food.name._val)
+emit('by-kind', food.kind._val, _key, food.name._val)
     `
 	err = db.Set(types.Path{"food"}, types.Tree{
 		Map: mapf,
@@ -150,7 +150,7 @@ emit('by-size', food.size._val, food)
 
 	err = db.Merge(types.Path{}, types.Tree{
 		Rev: rev,
-		Map: `emit('categories', doc._key, true)`,
+		Map: `emit('categories', _key, true)`,
 		Branches: types.Branches{
 			"food": &types.Tree{
 				Map: `
