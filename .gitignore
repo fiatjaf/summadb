@@ -3,3 +3,4 @@
 *.swo
 summadb
 npm-debug.log
+config.yaml

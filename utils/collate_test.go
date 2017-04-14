@@ -10,11 +10,11 @@ func TestCollate(t *testing.T) {
 	TestingT(t)
 }
 
-type CollateSuite struct{}
+type UtilsSuite struct{}
 
-var _ = Suite(&CollateSuite{})
+var _ = Suite(&UtilsSuite{})
 
-func (s *CollateSuite) TestBasic(c *C) {
+func (s *UtilsSuite) TestCollate(c *C) {
 	c.Assert(string(ToIndexable(float64(337))), StartsWith, "323263.3")
 	c.Assert(string(ToIndexable([]interface{}{
 		"bazuca",
