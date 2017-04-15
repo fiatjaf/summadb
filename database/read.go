@@ -85,5 +85,7 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 		}
 	}
 
+	tree.Key = sourcepath.Last()
+
 	return *tree, nil
 }

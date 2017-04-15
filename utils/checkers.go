@@ -47,7 +47,8 @@ type jsonEqualsChecker struct {
 	*check.CheckerInfo
 }
 
-/* compares two JSON strings, ignoring key order, spaces etc. */
+/* compares two JSON string, []byte or objects whatsoever,
+   ignoring key order, spaces etc. */
 
 var JSONEquals check.Checker = &jsonEqualsChecker{
 	&check.CheckerInfo{
@@ -57,27 +58,35 @@ var JSONEquals check.Checker = &jsonEqualsChecker{
 }
 
 func (checker *jsonEqualsChecker) Check(params []interface{}, names []string) (result bool, e string) {
-	var a interface{}
-	var p1 []byte
-	switch p := params[0].(type) {
-	case []byte:
-		p1 = p
-	case string:
-		p1 = []byte(p)
+	toObject := func(n interface{}) (res interface{}) {
+		switch p := n.(type) {
+		case []byte:
+			json.Unmarshal(p, &res)
+		case string:
+			json.Unmarshal([]byte(p), &res)
+		default:
+			if j, err := json.Marshal(p); err != nil {
+				panic(err)
+			} else {
+				json.Unmarshal(j, &res)
+			}
+		}
+		return
 	}
-	json.Unmarshal(p1, &a)
 
-	var b interface{}
-	var p2 []byte
-	switch p := params[0].(type) {
-	case []byte:
-		p2 = p
-	case string:
-		p2 = []byte(p)
+	toJSONString := func(r interface{}) string {
+		b, _ := json.Marshal(r)
+		return string(b)
 	}
-	json.Unmarshal(p2, &b)
 
-	return reflect.DeepEqual(a, b), ""
+	a := toObject(params[0])
+	b := toObject(params[1])
+
+	if reflect.DeepEqual(a, b) {
+		return true, ""
+	} else {
+		return false, toJSONString(a) + " != " + toJSONString(b)
+	}
 }
 
 // --------------------------------------------------------------------

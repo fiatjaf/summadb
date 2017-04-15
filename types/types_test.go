@@ -112,9 +112,6 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 					"f": &Tree{
 						Leaf: BoolLeaf(false),
 					},
-					"n": &Tree{
-						Leaf: NullLeaf(),
-					},
 					"m": &Tree{
 						Branches: Branches{
 							"t": &Tree{
@@ -129,7 +126,7 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"a":{"f": {"_val":false},"n":{"_val":null},"m":{"t":{"_val":true}}},"_val":"www"}`,
+		`{"a":{"f": {"_val":false},"m":{"t":{"_val":true}}},"_val":"www"}`,
 	)
 
 	j, _ = (Tree{
@@ -142,7 +139,7 @@ func (s *TypesSuite) TestMarshalJSON(c *C) {
 	c.Assert(
 		j,
 		JSONEquals,
-		`{"_val": 12, "_rev": "2-oweqwe", "!map": "emit(1, 2)", "_del": false}`,
+		`{"_val": 12, "_rev": "2-oweqwe", "!map": "emit(1, 2)"}`,
 	)
 
 	j, _ = (Tree{

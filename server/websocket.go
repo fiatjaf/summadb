@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/kr/pretty"
 	"github.com/summadb/summadb/database"
 	"github.com/summadb/summadb/types"
 	"github.com/summadb/summadb/utils"
@@ -71,7 +70,6 @@ func handlewebsocket(db *database.SummaDB, w http.ResponseWriter, r *http.Reques
 			}
 			answer(c, messageId, resp)
 		case "records":
-			pretty.Log(args)
 			records, err := db.Records(args.Path, database.RecordsParams{
 				KeyStart:   args.KeyStart,
 				KeyEnd:     args.KeyEnd,

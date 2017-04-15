@@ -6,7 +6,7 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func TestCollate(t *testing.T) {
+func TestAll(t *testing.T) {
 	TestingT(t)
 }
 
