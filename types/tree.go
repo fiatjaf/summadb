@@ -2,8 +2,10 @@ package types
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
+
+	"github.com/a8m/djson"
+	"github.com/summadb/summadb/utils"
 )
 
 type Tree struct {
@@ -21,8 +23,7 @@ type Branches map[string]*Tree
 func NewTree() *Tree { return &Tree{Branches: make(Branches)} }
 
 func (t *Tree) UnmarshalJSON(j []byte) error {
-	var v interface{}
-	err := json.Unmarshal(j, &v)
+	v, err := djson.Decode(j)
 	if err != nil {
 		return err
 	}
@@ -91,14 +92,14 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 	// key
 	if t.Key != "" {
 		buffer := bytes.NewBufferString(`"_key":`)
-		buffer.WriteString(`"` + t.Key + `"`)
+		buffer.Write(utils.JSONString(t.Key))
 		parts = append(parts, buffer.Bytes())
 	}
 
 	// rev
 	if t.Rev != "" {
 		buffer := bytes.NewBufferString(`"_rev":`)
-		buffer.WriteString(`"` + t.Rev + `"`)
+		buffer.Write(utils.JSONString(t.Rev))
 		parts = append(parts, buffer.Bytes())
 	}
 

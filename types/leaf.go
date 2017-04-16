@@ -1,10 +1,11 @@
 package types
 
 import (
-	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
+
+	"github.com/a8m/djson"
+	"github.com/summadb/summadb/utils"
 )
 
 const (
@@ -33,7 +34,7 @@ func (l Leaf) Bool() bool      { return l.bool }
 func (l Leaf) MarshalJSON() ([]byte, error) {
 	switch l.Kind {
 	case STRING:
-		return []byte(`"` + strings.Replace(l.string, `"`, `\"`, -1) + `"`), nil
+		return utils.JSONString(l.string), nil
 	case NUMBER:
 		return []byte(strconv.FormatFloat(l.float64, 'f', -1, 32)), nil
 	case BOOL:
@@ -48,8 +49,7 @@ func (l Leaf) MarshalJSON() ([]byte, error) {
 }
 
 func (l *Leaf) UnmarshalJSON(j []byte) error {
-	var v interface{}
-	err := json.Unmarshal(j, &v)
+	v, err := djson.Decode(j)
 	if err != nil {
 		return err
 	}

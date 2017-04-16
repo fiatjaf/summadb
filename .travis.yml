@@ -10,6 +10,7 @@ install:
   - go get github.com/mgutz/logxi/v1
   - go get github.com/kr/pretty
   - go get github.com/spf13/viper
+  - go get github.com/a8m/djson
   - go get github.com/yuin/gopher-lua
   - go get gopkg.in/check.v1
   - go get github.com/gorilla/websocket

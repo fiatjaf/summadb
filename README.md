@@ -1,1 +1,1 @@
-[![travis badge](https://travis-ci.org/summadb/summadb.svg?branch=v1)](https://travis-ci.org/summadb/summadb)
+[![travis badge](https://travis-ci.org/summadb/summadb.svg?branch=master)](https://travis-ci.org/summadb/summadb)
