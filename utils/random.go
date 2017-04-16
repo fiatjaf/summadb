@@ -30,3 +30,8 @@ func RandomString(n int) string {
 	}
 	return string(b)
 }
+
+func LetterByIndex(idx int) string {
+	idx = idx % len(letterBytes)
+	return letterBytes[idx : idx+1]
+}
