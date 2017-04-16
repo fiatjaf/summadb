@@ -70,7 +70,7 @@ func handlewebsocket(db *database.SummaDB, w http.ResponseWriter, r *http.Reques
 			}
 			answer(c, messageId, resp)
 		case "records":
-			records, err := db.Records(args.Path, database.RecordsParams{
+			records, err := db.Query(args.Path, database.QueryParams{
 				KeyStart:   args.KeyStart,
 				KeyEnd:     args.KeyEnd,
 				Descending: args.Descending,

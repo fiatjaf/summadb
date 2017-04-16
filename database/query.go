@@ -7,18 +7,18 @@ import (
 	"github.com/summadb/summadb/types"
 )
 
-type RecordsParams struct {
+type QueryParams struct {
 	KeyStart   string
 	KeyEnd     string
 	Descending bool
 	Limit      int
 }
 
-// Records provide a querying interface similar to CouchDB, in which you can manually specify
+// Query provide a querying interface similar to CouchDB, in which you can manually specify
 // key start and end, starting at a certain "path level".
 // in contrast with Read, which returns a big tree of everything under the given path,
-// Records return an array of trees, as the children of the given path.
-func (db *SummaDB) Records(sourcepath types.Path, params RecordsParams) (records []*types.Tree, err error) {
+// Query return an array of trees, as the children of the given path.
+func (db *SummaDB) Query(sourcepath types.Path, params QueryParams) (records []*types.Tree, err error) {
 	if !sourcepath.ReadValid() {
 		return records, errors.New("cannot read invalid path: " + sourcepath.Join())
 	}
@@ -95,7 +95,7 @@ func (db *SummaDB) Records(sourcepath types.Path, params RecordsParams) (records
 				// we're past the last key, so we're finished. add the leaf here.
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
-					log.Error("failed to unmarshal json leaf on Records()",
+					log.Error("failed to unmarshal json leaf on Query()",
 						"value", value,
 						"err", err)
 					return
