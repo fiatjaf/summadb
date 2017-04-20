@@ -14,8 +14,14 @@ type Tree struct {
 	Rev     string
 	Map     string
 	Deleted bool
+	Key     string
 
-	Key string
+	// fields for requesting values on Select()
+	RequestLeaf    bool
+	RequestRev     bool
+	RequestMap     bool
+	RequestDeleted bool
+	RequestKey     bool
 }
 
 type Branches map[string]*Tree
@@ -79,7 +85,7 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 	var parts [][]byte
 
 	// current leaf
-	if t.Leaf.Kind != NULL {
+	if t.Leaf.Kind != UNDEFINED {
 		jsonLeaf, err := t.Leaf.MarshalJSON()
 		if err != nil {
 			return nil, err
@@ -147,6 +153,16 @@ func (t Tree) Recurse(p Path, handle func(Path, Leaf, Tree) bool) {
 			t.Recurse(deeppath, handle)
 		}
 	}
+}
+
+func (t *Tree) DeepPath(p Path) *Tree {
+	var exists bool
+	for _, k := range p {
+		if t, exists = t.Branches[k]; !exists {
+			t = NewTree()
+		}
+	}
+	return t
 }
 
 func (t Tree) ToInterface() map[string]interface{} {

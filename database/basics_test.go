@@ -21,8 +21,7 @@ var _ = Suite(&DatabaseSuite{})
 
 func (s *DatabaseSuite) TestBasics(c *C) {
 	db := Open("/tmp/summadb-test-basics")
-	db.Erase()
-	db = Open("/tmp/summadb-test-basics")
+	defer db.Erase()
 
 	// insert a tree
 	err = db.Set(types.Path{"fruits"}, types.Tree{
@@ -157,8 +156,7 @@ func (s *DatabaseSuite) TestBasics(c *C) {
 
 func (s *DatabaseSuite) TestMerge(c *C) {
 	db := Open("/tmp/summadb-test-merge")
-	db.Erase()
-	db = Open("/tmp/summadb-test-merge")
+	defer db.Erase()
 
 	// insert things by merging
 	err = db.Merge(types.Path{"gods"}, types.Tree{
@@ -231,16 +229,15 @@ func (s *DatabaseSuite) TestMerge(c *C) {
 	c.Assert(treeread.Branches["1"].Branches["power"].Rev, StartsWith, "1-")
 	c.Assert(treeread.Branches["2"].Branches["power"].Leaf, DeepEquals, types.StringLeaf("battle"))
 	c.Assert(treeread.Branches["1"].Branches["son"].Rev, StartsWith, "2-")
-	c.Assert(treeread.Branches["1"].Branches["son"].Leaf, DeepEquals, types.NullLeaf())
+	c.Assert(treeread.Branches["1"].Branches["son"].Leaf, DeepEquals, types.Leaf{} /* undefined */)
 	c.Assert(treeread.Branches["1"].Branches["son"].Deleted, Equals, true)
 	c.Assert(treeread.Branches["1"].Branches["son"].Branches["name"].Rev, StartsWith, "1-")
 	c.Assert(treeread.Branches["1"].Branches["son"].Branches["name"].Leaf, DeepEquals, types.StringLeaf("thor"))
 }
 
 func (s *DatabaseSuite) TestQuery(c *C) {
-	db := Open("/tmp/summadb-test-rows")
-	db.Erase()
-	db = Open("/tmp/summadb-test-rows")
+	db := Open("/tmp/summadb-test-query")
+	defer db.Erase()
 
 	// insert a tree
 	err = db.Set(types.Path{"eatables"}, types.Tree{
@@ -334,9 +331,86 @@ end
 	rows, err = db.Query(types.Path{}, QueryParams{})
 	c.Assert(err, IsNil)
 	c.Assert(rows, HasLen, 1)
-	c.Assert(rows[0].Key, Equals, "eatables")
 	c.Assert(rows[0].Leaf, DeepEquals, types.StringLeaf("can be eaten"))
+	c.Assert(rows[0].Key, Equals, "eatables")
 	_, hasmapbranch := rows[0].Branches["!map"]
 	c.Assert(hasmapbranch, Equals, false)
 	c.Assert(rows[0].Map, Equals, mapf) // .Map should be the code of the mapf
+}
+
+func (s *DatabaseSuite) TestSelect(c *C) {
+	db := Open("/tmp/summadb-test-select")
+	defer db.Erase()
+
+	// fetch something
+	request := &types.Tree{
+		Branches: types.Branches{
+			"nothing": &types.Tree{
+				RequestLeaf: true,
+			},
+			"something": &types.Tree{
+				Branches: types.Branches{
+					"something-inside": &types.Tree{
+						RequestLeaf: true,
+					},
+				},
+			},
+		},
+	}
+	err := db.Select(types.Path{}, request)
+	c.Assert(err, IsNil)
+	c.Assert(request, JSONEquals, `{
+        "nothing": {"_val": null},
+        "something": {
+            "something-inside": {"_val": null}
+        }
+    }`) // nothing fetched because there's nothing in the database
+
+	// insert a tree
+	err = db.Set(types.Path{}, types.Tree{
+		Leaf: types.StringLeaf("top value"),
+		Branches: types.Branches{
+			"something": &types.Tree{
+				Leaf: types.BoolLeaf(false),
+				Branches: types.Branches{
+					"something-inside": &types.Tree{
+						Leaf: types.StringLeaf("blue"),
+						Map:  "emit(2)",
+					},
+				},
+			},
+			"something-else": &types.Tree{
+				Leaf: types.NumberLeaf(7749),
+			},
+		},
+	})
+	c.Assert(err, IsNil)
+	rootrev, _ := db.Rev(types.Path{})
+
+	// fetch again, now with values
+	request = &types.Tree{
+		RequestRev: true,
+		Branches: types.Branches{
+			"nothing": &types.Tree{
+				RequestLeaf: true,
+			},
+			"something": &types.Tree{
+				Branches: types.Branches{
+					"something-inside": &types.Tree{
+						RequestLeaf: true,
+						RequestMap:  true,
+					},
+				},
+			},
+		},
+	}
+	err = db.Select(types.Path{}, request)
+	c.Assert(err, IsNil)
+	c.Assert(request, JSONEquals, `{
+        "_rev": "`+rootrev+`",
+        "nothing": {"_val": null},
+        "something": {
+            "something-inside": {"_val": "blue", "!map": "emit(2)"}
+        }
+    }`)
 }

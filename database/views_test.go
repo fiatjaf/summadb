@@ -10,8 +10,7 @@ import (
 
 func (s *DatabaseSuite) TestMapFunctions(c *C) {
 	db := Open("/tmp/summadb-test-views")
-	db.Erase()
-	db = Open("/tmp/summadb-test-views")
+	defer db.Erase()
 
 	// insert a tree with a map function
 	mapf := `

@@ -50,7 +50,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 			// undelete
 			ops = append(ops, slu.Del(path.Child("_del").Join()))
 
-			if leaf.Kind != types.NULL {
+			if leaf.Kind != types.UNDEFINED {
 				// modify this leaf
 				jsonvalue, _ := leaf.MarshalJSON()
 				ops = append(ops, slu.Put(path.Join(), string(jsonvalue)))
