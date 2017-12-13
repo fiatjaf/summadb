@@ -13,6 +13,11 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 		return types.Tree{}, errors.New("cannot read invalid path: " + sourcepath.Join())
 	}
 
+	// if we're reading /a/path/like/this/!reduce, don't read the code for the reducef
+	if sourcepath.Last() == "!reduce" {
+		sourcepath = append(sourcepath, "")
+	}
+
 	var err error
 	tree := types.NewTree()
 
@@ -48,6 +53,11 @@ func (db *SummaDB) Read(sourcepath types.Path) (types.Tree, error) {
 				// add the leaf here
 				leaf := &types.Leaf{}
 				if err = leaf.UnmarshalJSON([]byte(value)); err != nil {
+					if relpath[i-1] == "!reduce" {
+						currentbranch.Reduce = value
+						break
+					}
+
 					log.Error("failed to unmarshal json leaf on Read()",
 						"value", value,
 						"err", err)

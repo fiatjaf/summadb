@@ -27,8 +27,8 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 	// store all revs to bump in a map and bump them all at once
 	revsToBump := make(map[string]string)
 
-	// store all updated map functions so we can trigger computations
-	var mapfUpdated []mapfupdated
+	// store all updated map and reduce functions so we can trigger computations
+	var mapfUpdated []fupdated
 
 	// visit all branches of the given tree
 	t.Recurse(p, func(path types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
@@ -36,6 +36,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 		revsToBump[path.Join()] = rev
 
 		mapf, _ := db.Get(path.Child("!map").Join())
+		reducef, _ := db.Get(path.Child("!reduce").Join())
 
 		if t.Deleted {
 			// delete this leaf
@@ -44,7 +45,7 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 
 			// trigger removal of !map results
 			if mapf != "" {
-				mapfUpdated = append(mapfUpdated, mapfupdated{path, ""})
+				mapfUpdated = append(mapfUpdated, fupdated{path, ""})
 			}
 		} else {
 			// undelete
@@ -60,7 +61,14 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 				ops = append(ops, slu.Put(path.Child("!map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
-				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})
+				mapfUpdated = append(mapfUpdated, fupdated{path, t.Map})
+			}
+
+			if reducef != t.Reduce {
+				ops = append(ops, slu.Put(path.Child("!reduce").Join(), t.Map))
+
+				// trigger map computations for all direct children of this key
+				mapfUpdated = append(mapfUpdated, fupdated{path.Parent(), t.Map}) // yes, map.
 			}
 		}
 		proceed = true
@@ -86,14 +94,17 @@ func (db *SummaDB) Merge(p types.Path, t types.Tree) error {
 	err := db.Batch(ops)
 
 	if err == nil {
-		for _, update := range mapfUpdated {
-			go db.triggerChildrenMapUpdates(update.mapf, update.path)
-		}
-		t.Recurse(p, func(p types.Path, _ types.Leaf, _ types.Tree) (proceed bool) {
-			go db.triggerAncestorMapFunctions(p)
-			proceed = true
-			return
-		})
+		go func() {
+			for _, update := range mapfUpdated {
+				db.triggerChildrenMapUpdates(update.code, update.path)
+			}
+
+			t.Recurse(p, func(p types.Path, _ types.Leaf, _ types.Tree) (proceed bool) {
+				go db.triggerAncestorMapFunctions(p)
+				proceed = true
+				return
+			})
+		}()
 	}
 
 	return err

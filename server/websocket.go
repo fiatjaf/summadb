@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -30,22 +31,20 @@ func handlewebsocket(db *database.SummaDB, w http.ResponseWriter, r *http.Reques
 			log.Error("ws read error.", "err", err, "message", string(bmessage), "mt", mt)
 			continue
 		}
-
-		parts := bytes.SplitN(bmessage, SEP, 3)
-		if len(parts) != 3 {
-			log.Error("ws invalid number of parts.",
-				"parts", parts)
+		method, messageId, body, err := parseMessage(bmessage)
+		if err != nil {
+			log.Error("ws parsing error.", "message", string(bmessage), "err", err)
 			continue
 		}
 
-		method := string(parts[0])
-		messageId := parts[1]
+		answer := func(response []byte) { send(c, []byte("answer"), messageId, response) }
+
 		var args Arguments
-		if err = json.Unmarshal(parts[2], &args); err != nil {
+		if err = json.Unmarshal(body, &args); err != nil {
 			log.Error("failed to parse arguments.",
 				"message", string(bmessage),
 				"err", err)
-			answer(c, messageId, jsonError("failed to parse arguments"))
+			answer(jsonError("failed to parse arguments"))
 			continue
 		}
 
@@ -53,22 +52,22 @@ func handlewebsocket(db *database.SummaDB, w http.ResponseWriter, r *http.Reques
 		case "rev":
 			rev, err := db.Rev(args.Path)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, utils.JSONString(rev))
+			answer(utils.JSONString(rev))
 		case "read":
 			tree, err := db.Read(args.Path)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
 			resp, err := tree.MarshalJSON()
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, resp)
+			answer(resp)
 		case "records":
 			records, err := db.Query(args.Path, database.QueryParams{
 				KeyStart:   args.KeyStart,
@@ -77,39 +76,45 @@ func handlewebsocket(db *database.SummaDB, w http.ResponseWriter, r *http.Reques
 				Limit:      args.Limit,
 			})
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
 			resp, err := json.Marshal(records)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, resp)
+			answer(resp)
 		case "set":
 			err := db.Set(args.Path, args.Record)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, jsonSuccess())
+			answer(jsonSuccess())
 		case "merge":
 			err := db.Merge(args.Path, args.Record)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, jsonSuccess())
+			answer(jsonSuccess())
 		case "delete":
 			err := db.Delete(args.Path, args.Rev)
 			if err != nil {
-				answer(c, messageId, jsonError(err.Error()))
+				answer(jsonError(err.Error()))
 				continue
 			}
-			answer(c, messageId, jsonSuccess())
+			answer(jsonSuccess())
+		case "replicate":
+			// enter replication state. lock everything until the replication completes.
+			replicationId := string(messageId)
+			log.Debug("accepting replication.", "id", replicationId)
+			err := acceptReplication(c, db, args.Path, replicationId)
+			log.Debug("replication ended", "id", replicationId, "err", err)
 		default:
 			log.Error("ws unknown method.", "message", string(bmessage))
-			answer(c, messageId, jsonError("unknown method "+method))
+			answer(jsonError("unknown method " + method))
 			continue
 		}
 	}
@@ -126,8 +131,20 @@ type Arguments struct {
 	Limit      int        `json:limit`
 }
 
-func answer(c *websocket.Conn, messageId []byte, response []byte) {
-	body := append(messageId, ' ')
-	body = append(body, response...)
+func send(c *websocket.Conn, args ...[]byte) {
+	body := bytes.Join(args, []byte{' '})
 	c.WriteMessage(1, body)
+}
+
+func parseMessage(bmessage []byte) (method string, messageId []byte, body []byte, err error) {
+	parts := bytes.SplitN(bmessage, SEP, 3)
+	if len(parts) != 3 {
+		err = errors.New("should have 3 parts, has " + strings.Itoa(len(parts)))
+		return
+	}
+
+	method = string(parts[0])
+	messageId = parts[1]
+	body := parts[2]
+	return
 }

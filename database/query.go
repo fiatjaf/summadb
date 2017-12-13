@@ -113,6 +113,11 @@ func (db *SummaDB) Query(sourcepath types.Path, params QueryParams) (records []*
 						// grab the code for the map function, never any of its results
 						currentbranch.Map = value
 					}
+				case "!reduce":
+					if i == len(relpath)-1 {
+						// grab the code for the reduce function, never any of its results
+						currentbranch.Reduce = value
+					}
 				case "_del":
 					currentbranch.Deleted = true
 					if i == 0 {

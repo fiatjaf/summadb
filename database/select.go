@@ -59,6 +59,11 @@ func (db *SummaDB) Select(sourcepath types.Path, requestTree *types.Tree) error 
 			subtree.Map, err = db.Get(p.Child("!map").Join())
 		}
 
+		if t.RequestReduce {
+			// !reduce requested
+			subtree.Reduce, err = db.Get(p.Child("!reduce").Join())
+		}
+
 		if t.RequestDeleted {
 			// _del requested
 			_, ierr := db.Get(p.Child("_del").Join())

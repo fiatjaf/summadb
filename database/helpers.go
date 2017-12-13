@@ -4,7 +4,7 @@ import (
 	"github.com/summadb/summadb/types"
 )
 
-type mapfupdated struct {
+type fupdated struct {
 	path types.Path
-	mapf string
+	code string
 }

@@ -6,9 +6,21 @@ import (
 	"github.com/fiatjaf/levelup"
 	slu "github.com/fiatjaf/levelup/stringlevelup"
 	"github.com/summadb/summadb/types"
+	"github.com/summadb/summadb/views"
 )
 
 const SEP = "^!~"
+
+func runMap(mapf string, tree types.Tree, key string) []types.EmittedRow {
+	emittedrows, err := views.Map(mapf, tree, key)
+	if err != nil {
+		log.Error("views.Map returned error.",
+			"err", err,
+			"mapf", mapf,
+			"docid", key)
+	}
+	return emittedrows
+}
 
 func (db *SummaDB) triggerAncestorMapFunctions(p types.Path) {
 	// look through ancestors for map functions
@@ -47,7 +59,8 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 
 	// mapf will be an empty string if it has been deleted.
 	if mapf == "" {
-		// in this case we do an 'update' with no emitted rows. that will clean the map results.
+		// in this case we do an update with new emitted rows,
+		// that will clean the map results.
 		for docid, _ := range tree.Branches {
 			db.updateEmittedRecordsInTheDatabase(p, docid, []types.EmittedRow{})
 		}
@@ -59,7 +72,11 @@ func (db *SummaDB) triggerChildrenMapUpdates(mapf string, p types.Path) {
 	}
 }
 
-func (db *SummaDB) updateEmittedRecordsInTheDatabase(p types.Path, docid string, emittedrows []types.EmittedRow) {
+func (db *SummaDB) updateEmittedRecordsInTheDatabase(
+	p types.Path,
+	docid string,
+	emittedrows []types.EmittedRow,
+) {
 	allrelativepaths := make([]string, len(emittedrows))
 
 	for i, row := range emittedrows {
@@ -83,11 +100,24 @@ func (db *SummaDB) updateEmittedRecordsInTheDatabase(p types.Path, docid string,
 			continue
 		}
 
-		err = db.deleteEmittedRow(p, types.ParsePath(relativepath))
+		relpath := types.ParsePath(relativepath)
+		deletedRecord, err := db.deleteEmittedRow(p, relpath)
 		if err != nil {
 			log.Error("unexpected error when deleting emitted row from the database.",
 				"err", err,
 				"relpath", relativepath)
+		} else {
+			// run the "remove" reducer directive
+			row := types.EmittedRow{
+				RelativePath: relpath,
+				Value:        deletedRecord,
+			}
+			err := db.runReduce(p, "remove", row, docid)
+			if err != nil {
+				log.Error("unexpected error when running 'remove' reduce.",
+					"err", err,
+					"row", row)
+			}
 		}
 	}
 
@@ -104,6 +134,14 @@ func (db *SummaDB) updateEmittedRecordsInTheDatabase(p types.Path, docid string,
 		// save all emitted rows in the database
 		for _, row := range emittedrows {
 			err = db.saveEmittedRow(p, row.RelativePath, row.Value)
+
+			// run the "add" reducer directive
+			err := db.runReduce(p, "add", row, docid)
+			if err != nil {
+				log.Error("unexpected error when running 'add' reduce.",
+					"err", err,
+					"row", row)
+			}
 		}
 	} else {
 		err = db.local.Del(localmetakey)
@@ -116,20 +154,20 @@ func (db *SummaDB) updateEmittedRecordsInTheDatabase(p types.Path, docid string,
 	}
 }
 
-func (db *SummaDB) deleteEmittedRow(base types.Path, relpath types.Path) error {
+func (db *SummaDB) deleteEmittedRow(base types.Path, relpath types.Path) (types.Tree, error) {
 	var ops []levelup.Operation
 
-	rowpath := append(base.Child("!map"), relpath...)
-	iter := db.ReadRange(&slu.RangeOpts{
-		Start: rowpath.Join(),
-		End:   rowpath.Join() + "~~~",
-	})
-	defer iter.Release()
-
-	for ; iter.Valid(); iter.Next() {
-		ops = append(ops, slu.Del(iter.Key()))
+	rpath := append(base.Child("!map"), relpath...)
+	record, err := db.Read(rpath)
+	if err != nil {
+		return record, err
 	}
-	return db.Batch(ops)
+
+	record.Recurse(rpath, func(np types.Path, _ types.Leaf, _ types.Tree) bool {
+		ops = append(ops, slu.Del(np.Join()))
+		return true
+	})
+	return record, db.Batch(ops)
 }
 
 func (db *SummaDB) saveEmittedRow(base types.Path, relpath types.Path, value types.Tree) error {

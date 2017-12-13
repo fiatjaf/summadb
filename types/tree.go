@@ -13,6 +13,7 @@ type Tree struct {
 	Branches
 	Rev     string
 	Map     string
+	Reduce  string
 	Deleted bool
 	Key     string
 
@@ -20,6 +21,7 @@ type Tree struct {
 	RequestLeaf    bool
 	RequestRev     bool
 	RequestMap     bool
+	RequestReduce  bool
 	RequestDeleted bool
 	RequestKey     bool
 }
@@ -61,6 +63,9 @@ func TreeFromInterface(v interface{}) Tree {
 		if mapf, ok := val["!map"]; ok {
 			t.Map = mapf.(string)
 		}
+		if reducef, ok := val["!reduce"]; ok {
+			t.Reduce = reducef.(string)
+		}
 		if deleted, ok := val["_del"]; ok {
 			t.Deleted = deleted.(bool)
 		}
@@ -69,6 +74,7 @@ func TreeFromInterface(v interface{}) Tree {
 		delete(val, "_val")
 		delete(val, "_rev")
 		delete(val, "!map")
+		delete(val, "!reduce")
 		delete(val, "_del")
 		t.Branches = make(Branches, len(val))
 		for k, v := range val {
@@ -113,6 +119,13 @@ func (t Tree) MarshalJSON() ([]byte, error) {
 	if t.Map != "" {
 		buffer := bytes.NewBufferString(`"!map":`)
 		buffer.WriteString(`"` + strings.Replace(t.Map, `"`, `\"`, -1) + `"`)
+		parts = append(parts, buffer.Bytes())
+	}
+
+	// reduce
+	if t.Reduce != "" {
+		buffer := bytes.NewBufferString(`"!reduce":`)
+		buffer.WriteString(`"` + strings.Replace(t.Reduce, `"`, `\"`, -1) + `"`)
 		parts = append(parts, buffer.Bytes())
 	}
 

@@ -35,10 +35,11 @@ func lvalueToInterface(lvalue lua.LValue) interface{} {
 	return nil
 }
 
-func treeToLTable(L *lua.LState, table *lua.LTable, t types.Tree) {
+func treeToLTable(L *lua.LState, t types.Tree) *lua.LTable {
+	table := L.CreateTable(32, 32)
+
 	for key, subtree := range t.Branches {
-		subtable := L.CreateTable(32, 32)
-		treeToLTable(L, subtable, *subtree)
+		subtable := treeToLTable(L, *subtree)
 		table.RawSetString(key, subtable)
 	}
 
@@ -53,9 +54,11 @@ func treeToLTable(L *lua.LState, table *lua.LTable, t types.Tree) {
 	case types.NULL:
 		leafvalue = lua.LNil
 	default:
-		return
+		return table
 	}
 	table.RawSetString("_val", leafvalue)
+
+	return table
 }
 
 // toArray returns nil if the table is not a proper array.

@@ -1,6 +1,8 @@
 package views
 
 import (
+	"log"
+
 	"github.com/summadb/summadb/types"
 	"github.com/summadb/summadb/utils"
 	"github.com/yuin/gopher-lua"
@@ -11,9 +13,7 @@ func Map(code string, t types.Tree, key string) ([]types.EmittedRow, error) {
 	defer L.Close()
 
 	// the 'doc'
-	doc := L.CreateTable(32, 32)
-	treeToLTable(L, doc, t)
-	L.SetGlobal("doc", doc)
+	L.SetGlobal("doc", treeToLTable(L, t))
 
 	// the "_key"
 	L.SetGlobal("_key", lua.LString(key))
@@ -64,12 +64,59 @@ func Map(code string, t types.Tree, key string) ([]types.EmittedRow, error) {
 	}))
 
 	// the 'indexify' function
-	L.SetGlobal("indexify", L.NewFunction(func(L *lua.LState) int {
-		/* return after converting to string from ToIndexable []byte the first argument */
-		L.Push(lua.LString(string(utils.ToIndexable(lvalueToInterface(L.Get(1))))))
-		return 1
-	}))
+	L.SetGlobal("indexify", createIndexify(L))
 
 	err := L.DoString(code)
 	return emitted, err
+}
+
+func Reduce(
+	code string,
+	directive string,
+	acc types.Tree,
+	row types.EmittedRow,
+	key string,
+) (types.Tree, error) {
+	L := lua.NewState()
+	defer L.Close()
+
+	// the '_key' of the original record being mapped
+	L.SetGlobal("_key", lua.LString(key))
+
+	// the 'path' emitted by the mapf
+	lpath := L.CreateTable(32, 32)
+	for _, k := range row.RelativePath {
+		lpath.Append(lua.LString(k))
+	}
+	L.SetGlobal("path", lpath)
+
+	// the 'value' emitted by the mapf
+	L.SetGlobal("value", treeToLTable(L, row.Value))
+
+	// the 'directive': "add" or "remove"
+	L.SetGlobal("directive", lua.LString(directive))
+
+	// the previous value, what is being reduced
+	L.SetGlobal("acc", treeToLTable(L, acc))
+
+	// the 'indexify' function
+	L.SetGlobal("indexify", createIndexify(L))
+
+	log.Print("running reducef: path=", row.RelativePath, " value=", row.Value, " directive=", directive, " acc=", acc)
+
+	err := L.DoString(code)
+	if err != nil {
+		return types.Tree{}, err
+	}
+
+	output := L.GetGlobal("acc")
+	return types.TreeFromInterface(lvalueToInterface(output)), nil
+}
+
+func createIndexify(L *lua.LState) lua.LValue {
+	return L.NewFunction(func(L *lua.LState) int {
+		/* return after converting to string from ToIndexable []byte the first argument */
+		L.Push(lua.LString(string(utils.ToIndexable(lvalueToInterface(L.Get(1))))))
+		return 1
+	})
 }

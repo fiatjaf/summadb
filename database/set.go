@@ -56,7 +56,7 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	}
 
 	// store all updated map functions so we can trigger computations
-	var mapfUpdated []mapfupdated
+	var mapfUpdated []fupdated
 
 	t.Recurse(p, func(path types.Path, leaf types.Leaf, t types.Tree) (proceed bool) {
 		if t.Deleted {
@@ -83,7 +83,15 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 				ops = append(ops, slu.Put(path.Child("!map").Join(), t.Map))
 
 				// trigger map computations for all direct children of this key
-				mapfUpdated = append(mapfUpdated, mapfupdated{path, t.Map})
+				mapfUpdated = append(mapfUpdated, fupdated{path, t.Map})
+			}
+
+			// save the reduce function if provided
+			if t.Reduce != "" {
+				ops = append(ops, slu.Put(path.Child("!reduce").Join(), t.Reduce))
+
+				// trigger map computations for all direct children of this key
+				mapfUpdated = append(mapfUpdated, fupdated{path.Parent(), t.Map}) // yes, map.
 			}
 
 			proceed = true
@@ -102,10 +110,12 @@ func (db *SummaDB) Set(p types.Path, t types.Tree) error {
 	err := db.Batch(ops)
 
 	if err == nil {
-		for _, update := range mapfUpdated {
-			go db.triggerChildrenMapUpdates(update.mapf, update.path)
-		}
-		go db.triggerAncestorMapFunctions(p)
+		go func() {
+			for _, update := range mapfUpdated {
+				db.triggerChildrenMapUpdates(update.code, update.path)
+			}
+			db.triggerAncestorMapFunctions(p)
+		}()
 	}
 
 	return err

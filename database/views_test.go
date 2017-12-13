@@ -9,7 +9,7 @@ import (
 )
 
 func (s *DatabaseSuite) TestMapFunctions(c *C) {
-	db := Open("/tmp/summadb-test-views")
+	db := Open("/tmp/summadb-test-mapf")
 	defer db.Erase()
 
 	// insert a tree with a map function
@@ -170,4 +170,77 @@ emit('by-size', food.size._val, food)
 	treeread, err = db.Read(types.Path{"food", "!map", "categories", "tuber"})
 	c.Assert(err, IsNil)
 	c.Assert(treeread.Leaf, DeepEquals, types.BoolLeaf(true))
+}
+
+func (s *DatabaseSuite) TestReduceFunctions(c *C) {
+	db := Open("/tmp/summadb-test-reducef")
+	db.Erase()
+	db = Open("/tmp/summadb-test-reducef")
+
+	mapf := `
+for word in string.gmatch(doc._val, "%S+") do
+  if prev ~= "" then
+    emit("next-word", prev, word)
+  end
+  prev = word
+end
+    `
+	reducef := `
+local thisword = path[2] -- path is {'next-word', <word>}
+local all = acc[thisword] or {}
+
+-- all is a table of {<indexify({<count>, <nextword>})>={count=<count>, next=<nextword>}}
+
+-- value is the value emitted by the mapf
+local emittednext = value._val
+
+for idx, data in pairs(all) do
+  if idx == indexify({data.count, emittednext}) then
+    -- this is the record we're looking for, it matches word and nextword.
+
+    if directive == "add" then
+      count = count + 1
+    elseif directive == "remove" then
+      count = count - 1
+    end
+
+    -- remove this item from the index
+    acc[thisword][idx] = nil
+
+    -- add a new
+    if count > 0 then
+      acc[thisword][indexify(count, emittednext)] = {count=count, next=nextword}
+    end
+  end
+end
+    `
+
+	t := types.Tree{
+		Map:    mapf,
+		Reduce: reducef,
+		Branches: types.Branches{
+			"82eu7": &types.Tree{Leaf: types.StringLeaf("amanhã você vai lá ontem?")},
+			"52rt9": &types.Tree{Leaf: types.StringLeaf("amanhã vai ser outro dia")},
+			"4w2vx": &types.Tree{Leaf: types.StringLeaf("quando for amanhã será")},
+			"s9wo2": &types.Tree{Leaf: types.StringLeaf("amanhã vai chover")},
+		},
+	}
+
+	err := db.Set(types.Path{}, t)
+	c.Assert(err, IsNil)
+	time.Sleep(time.Millisecond * 200)
+
+	records, err := db.Query(types.Path{"!reduce", "amanhã"}, QueryParams{
+		Limit:      3,
+		Descending: true,
+	})
+	c.Assert(err, IsNil)
+
+	c.Assert(records, HasLen, 3)
+	c.Assert(records[0].Branches["next"].Leaf, DeepEquals, types.StringLeaf("vai"))
+	c.Assert(records[0].Branches["count"].Leaf, DeepEquals, types.NumberLeaf(2))
+	c.Assert(records[1].Branches["next"].Leaf, DeepEquals, types.StringLeaf("for"))
+	c.Assert(records[1].Branches["count"].Leaf, DeepEquals, types.NumberLeaf(1))
+	c.Assert(records[2].Branches["next"].Leaf, DeepEquals, types.StringLeaf("você"))
+	c.Assert(records[2].Branches["count"].Leaf, DeepEquals, types.NumberLeaf(1))
 }
